@@ -18,13 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "timing.h"
-#include "states.h"
-#include "SFTD_states.h"
-#include "system.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "timing.h" 
+#include "states.h" 
+#include "SFTD_states.h" 
+#include "system.h" 
 
 /* USER CODE END Includes */
 
@@ -44,8 +44,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-uint32_t pulse_p = 10;
-uint32_t counter = 0;
+TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 TIM_HandleTypeDef htim6;															//NEW CODE ADDED...1/6/24 FROM T10_x1-TIMER_EX3_COPY1
@@ -53,6 +52,8 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim5;
 uint32_t pulse1_value = 21000;//500Hz
 uint32_t ccr_content;
+uint32_t pulse_p = 10; 
+uint32_t counter = 0; 
 
 /* USER CODE END PV */
 
@@ -60,13 +61,9 @@ uint32_t ccr_content;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_TIM5_Init(void);
-void tim6_init(void);																//NEW CODE ADDED...1/6/24 FROM T10_x1-TIMER_EX3_COPY1
-void tim2_init(void);
-void tim5_init(void);
-void FIRE_LASER(uint32_t pulse_length);
-uint16_t test(void);
 /* USER CODE BEGIN PFP */
+void tim5_init(void); 
+void FIRE_LASER(uint32_t pulse_length);
 
 /* USER CODE END PFP */
 
@@ -81,6 +78,7 @@ uint16_t test(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -106,8 +104,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  /* USER CODE BEGIN 2 */
   MX_TIM2_Init();
+  /* USER CODE BEGIN 2 */
   //MX_TIM5_Init();
   sftdStateInit();
 
@@ -126,7 +124,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	 sftdStateMonitor();
+	  sftdStateMonitor();
 
     /* USER CODE BEGIN 3 */
 
@@ -140,184 +138,89 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-//			BEGINNING OF												THE ORIGINAL CODE FOR CLOCK CONFIG								//
-		  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-		  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-		  /** Configure the main internal regulator output voltage
-		  */
-		  __HAL_RCC_PWR_CLK_ENABLE();
-		  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-		  /** Initializes the RCC Oscillators according to the specified parameters
-		  * in the RCC_OscInitTypeDef structure.
-		  */
-		  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-		  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-		  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-		  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-		  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-		  {
-			Error_Handler();
-		  }
-
-		  /** Initializes the CPU, AHB and APB buses clocks
-		  */
-		  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-									  |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-		  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
-		  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-		  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-		  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-
-		  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
-		  {
-			Error_Handler();
-		  }
-}
-
-		/**
-		  * @brief TIM2 Initialization Function
-		  * @param None
-		  * @retval None
-		  */
-static void MX_TIM2_Init(void)
-{
-
-  /* USER CODE BEGIN TIM2_Init 0 */
-
-  /* USER CODE END TIM2_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4294967295;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-	Error_Handler();
+    Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
-	Error_Handler();
+    Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-	Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
-
-  /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
-//			END OF												THE ORIGINAL CODE FOR CLOCK CONFIG										//
-/***************************************************************************************************************************************/
-//			BEGINNING OF										FROM T10_x1-TIMER_EX3_COPY1 FOR CLOCK CONFIG  						   //
-/*		  	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-		    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
-		    // Configure the main internal regulator output voltage
-
-		    __HAL_RCC_PWR_CLK_ENABLE();
-		    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-
-		    //Initializes the RCC Oscillators according to the specified parameters
-		    // in the RCC_OscInitTypeDef structure.
-
-		    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-		    RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-		    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-		    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-		    RCC_OscInitStruct.PLL.PLLM = 8;
-		    RCC_OscInitStruct.PLL.PLLN = 336;
-		    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-		    RCC_OscInitStruct.PLL.PLLQ = 7;
-		    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-		    {
-		      Error_Handler();
-		    }
-
-		    // Initializes the CPU, AHB and APB buses clocks
-
-		    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-		                                |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-		    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;//RCC_SYSCLKSOURCE_PLLCLK;
-		    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-		    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-		    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
-
-		    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
-		    {
-		      Error_Handler();
-		    }
-		    */
-//			END OF												FROM T10_x1-TIMER_EX3_COPY1 FOR CLOCK CONFIG  						   //
-/***************************************************************************************************************************************/
-
 }
 
 /**
-  * @brief TIM5 Initialization Function
+  * @brief TIM2 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM5_Init(void)
+static void MX_TIM2_Init(void)
 {
 
-  /* USER CODE BEGIN TIM5_Init 0 */
+	  /* USER CODE BEGIN TIM2_Init 0 */
 
-  /* USER CODE END TIM5_Init 0 */
+	  /* USER CODE END TIM2_Init 0 */
 
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
+	  TIM_MasterConfigTypeDef sMasterConfig = {0};
+	  TIM_OC_InitTypeDef sConfigOC = {0};
 
-  /* USER CODE BEGIN TIM5_Init 1 */
+	  /* USER CODE BEGIN TIM2_Init 1 */
 
-  /* USER CODE END TIM5_Init 1 */
-  htim5.Instance = TIM5;
-  htim5.Init.Prescaler = 0;
-  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim5.Init.Period = 4294967295;
-  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_OC_Init(&htim5) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_OC_ConfigChannel(&htim5, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM5_Init 2 */
+	  /* USER CODE END TIM2_Init 1 */
+	  htim2.Instance = TIM2;
+	  htim2.Init.Prescaler = 0;
+	  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+	  htim2.Init.Period = 4294967295;
+	  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+	  {
+		Error_Handler();
+	  }
+	  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+	  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+	  {
+		Error_Handler();
+	  }
+	  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+	  sConfigOC.Pulse = 0;
+	  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+	  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+	  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+	  {
+		Error_Handler();
+	  }
+	  /* USER CODE BEGIN TIM2_Init 2 */
 
-  /* USER CODE END TIM5_Init 2 */
-  HAL_TIM_MspPostInit(&htim5);
+	  /* USER CODE END TIM2_Init 2 */
+	  HAL_TIM_MspPostInit(&htim2);
 
 }
-
-
 
 /**
   * @brief GPIO Initialization Function
@@ -437,6 +340,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
 /***************************************************************************************************************************************/
 //			BEGINNING OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CONFIG 1/6/24				   //
 void tim6_init(void)
