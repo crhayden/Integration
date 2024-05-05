@@ -52,6 +52,7 @@ static unsigned long sys_time;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
+unsigned long getSystickTime(void);
 /*******************************************************************************
 * Function Name  : getSystickTime()
 * Description    : gets current value of sys_time
