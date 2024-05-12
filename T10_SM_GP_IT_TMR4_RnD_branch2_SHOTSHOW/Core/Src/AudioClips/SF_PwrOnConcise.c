@@ -1,12 +1,19 @@
-/*
- * PwrOnConsise.c
- *
- *  Created on: Apr 6, 2024
- *      Author: chris
- */
-#include "PwrOnConcise.h"
-
-
+ /**
+ * @file PwrOnConsise.c
+ * @brief Holds audio data for power on clip
+ * 
+ * @date 4/30/2024
+ * 
+ **/
+#include <SF_PwrOnConcise.h>
+////////////////////////////////////////////////////////////////////////////////
+///
+///                           Internal Data
+///
+////////////////////////////////////////////////////////////////////////////////
+///
+/// power on clip 16-bit signed samples 
+///
 const int16_t PwrOnConcise[54804] = {
 -419,
 -514,
@@ -54812,4 +54819,7 @@ const int16_t PwrOnConcise[54804] = {
 42,
 19,
 -49};
+///
+/// Size of power on clip
+///
 const uint32_t sizePwrOnConcise = sizeof(PwrOnConcise)/sizeof(PwrOnConcise[0]);

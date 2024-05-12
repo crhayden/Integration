@@ -228,20 +228,11 @@ void EXTI0_IRQHandler(void)
   */
 void DMA1_Stream5_IRQHandler(void)
 {
-    /* USER CODE BEGIN DMA1_Stream5_IRQn 0 */
-    if (__HAL_DMA_GET_FLAG(&hdma_spi3_tx, DMA_FLAG_TCIF1_5)) {
-        if (curClip.clip == SHOT) {
-            curClip.count++;
-            if (curClip.count >=2) {
-                osMessagePut (audioQueueHandle, TONE, 0);
-                curClip.count = 0;
-            }
-        }
-    }
-    /* USER CODE END DMA1_Stream5_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_spi3_tx);
-    /* USER CODE BEGIN DMA1_Stream5_IRQn 1 */
-    /* USER CODE END DMA1_Stream5_IRQn 1 */
+  /* USER CODE BEGIN DMA1_Stream5_IRQn 0 */
+  /* USER CODE END DMA1_Stream5_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_spi3_tx);
+  /* USER CODE BEGIN DMA1_Stream5_IRQn 1 */
+  /* USER CODE END DMA1_Stream5_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

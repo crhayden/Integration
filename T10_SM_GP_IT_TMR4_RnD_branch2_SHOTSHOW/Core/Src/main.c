@@ -26,12 +26,7 @@
 #include "states.h" 
 #include "SFTD_states.h" 
 #include "system.h" 
-#include "AudioClips/PwrOnConcise.h"
-#include "AudioClips/Tone.h"
-#include "AudioClips/Shot.h"
 #include <stdio.h>
-#include <math.h>
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,8 +41,6 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define MAX_DMA_VAL (uint32_t)(pow(2,16)-1)
 
 /* USER CODE END PM */
 
@@ -57,10 +50,7 @@ DMA_HandleTypeDef hdma_spi3_tx;
 
 TIM_HandleTypeDef htim2;
 
-osThreadId buttonTaskHandle;
-osThreadId audioTaskHandle;
 osThreadId stateMonitorTasHandle;
-osMessageQId audioQueueHandle;
 /* USER CODE BEGIN PV */
 TIM_HandleTypeDef htim6;															//NEW CODE ADDED...1/6/24 FROM T10_x1-TIMER_EX3_COPY1
 TIM_HandleTypeDef htim2;
@@ -69,7 +59,6 @@ uint32_t pulse1_value = 21000;//500Hz
 uint32_t ccr_content;
 uint32_t pulse_p = 10; 
 uint32_t counter = 0; 
-clip_info_t curClip = {.clip = NONE, .slot = 0, .count = 0};
 
 /* USER CODE END PV */
 
@@ -79,73 +68,16 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2S3_Init(void);
-void ButtonTask(void const * argument);
-void AudioTask(void const * argument);
 void StateMonitorTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 void tim5_init(void); 
 void FIRE_LASER(uint32_t pulse_length);
-static  uint32_t _ReadPins();
-static  void     _Play(uint16_t* pBuf, uint32_t len);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-static void PlayClip(audio_clips_t clip) {
-    curClip.clip = clip;
-    switch (clip) {
-        case WARNING:
-          _Play((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
-          break;
-        case POWER_ON:
-          _Play((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
-          break;
-        case SHOT:
-          _Play((uint16_t*)&Shot[0], sizeShot);
-          break;
-        case TONE:
-          _Play((uint16_t*)&Tone[0], sizeTone);
-          break;
-    default:
-      break;
-    }
-    curClip.slot++;
-}
-static uint32_t _ReadPins() {
-  uint32_t  res =   0;
-  res       =   HAL_GPIO_ReadPin(GPIOE, SW5_Pin)  <<  2;
-  res       |=  HAL_GPIO_ReadPin(GPIOE, SW6_Pin)  <<  1;
-  res       |=  HAL_GPIO_ReadPin(GPIOA, TRIGGER_Pin);
-  return  res;
-}
-static void _Play(uint16_t* pBuf, uint32_t len) {
-  uint8_t   k = 0;
-  uint8_t   i = len/MAX_DMA_VAL;
-  //
-  // assume audio clip is larger than max size (2^16)
-  //
-  do {
-    //
-    // Advance to start of next chunk
-    //
-    uint16_t* pData = &pBuf[k * MAX_DMA_VAL];
-    //
-    // Get the length of current chunk
-    //
-    uint32_t l        = len - MAX_DMA_VAL * k;
-    uint32_t clipSize = MIN(l, MAX_DMA_VAL);
-    //
-    // make sure we are ready before transmitting
-    //
-    while (HAL_I2S_GetState(&hi2s3) != HAL_I2S_STATE_READY);
-    HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t*)pData, clipSize);
-    k++;
-  } while (i-->0);
-  return;
-}
 
 /* USER CODE END 0 */
 
@@ -185,6 +117,7 @@ int main(void)
   MX_TIM2_Init();
   MX_I2S3_Init();
   /* USER CODE BEGIN 2 */
+  SF_AudioInit();
   //MX_TIM5_Init();
   sftdStateInit();
 
@@ -208,26 +141,12 @@ int main(void)
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
-  /* Create the queue(s) */
-  /* definition and creation of audioQueue */
-  osMessageQDef(audioQueue, 16, uint16_t);
-  audioQueueHandle = osMessageCreate(osMessageQ(audioQueue), NULL);
-
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of buttonTask */
-  osThreadDef(buttonTask, ButtonTask, osPriorityNormal, 0, 128);
-  buttonTaskHandle = osThreadCreate(osThread(buttonTask), NULL);
-
-  /* definition and creation of audioTask */
-  osThreadDef(audioTask, AudioTask, osPriorityIdle, 0, 128);
-  audioTaskHandle = osThreadCreate(osThread(audioTask), NULL);
-
   /* definition and creation of stateMonitorTas */
-  osThreadDef(stateMonitorTas, StateMonitorTask, osPriorityIdle, 0, 128);
+  osThreadDef(stateMonitorTas, StateMonitorTask, osPriorityNormal, 0, 128);
   stateMonitorTasHandle = osThreadCreate(osThread(stateMonitorTas), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -636,77 +555,6 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_ButtonTask */
-/**
-  * @brief  Function implementing the buttonTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_ButtonTask */
-void ButtonTask(void const * argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  uint32_t	curPinVal	=  0;
-  uint32_t 	oldPinVal   =  -1;
-  for(;;) {
-	curPinVal	=	_ReadPins();
-	//
-	// button release is required in between every playback iteration
-	//
-	if (curPinVal != oldPinVal || curPinVal == 3) {
-		oldPinVal	=	curPinVal;
-		//
-		// Only attempt to play clip if there isn't one already playing
-		//
-		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
-			switch (curPinVal) {
-  				case 3:
-  					osMessagePut (audioQueueHandle, WARNING, 100);
-  					break;
-  				case 6:
-  					osMessagePut (audioQueueHandle, SHOT, 100);
-  					break;
-//  				case 6:
-//  					osMessagePut (audioQueueHandle, TONE, 100);
-//  					break;
-  				default:
-  					break;
-			}
-		}
-	}
-  osDelay(50);
-  }
-  /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_AudioTask */
-/**
-* @brief Function implementing the audioTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_AudioTask */
-void AudioTask(void const * argument)
-{
-  /* USER CODE BEGIN AudioTask */
-    /* Infinite loop */
-    osEvent event;
-    audio_clips_t clip = 0;
-    PlayClip(POWER_ON);
-    //PlayClip(TONE);
-    for(;;) {
-        event = osMessageGet(audioQueueHandle, osWaitForever);
-        if (event.status == osEventMessage) {
-            event.def.message_id    = audioQueueHandle;
-            clip                    = (audio_clips_t)event.value.v;
-            PlayClip(clip);
-        }
-        osDelay(100);
-    }
-  /* USER CODE END AudioTask */
-}
-
 /* USER CODE BEGIN Header_StateMonitorTask */
 /**
 * @brief Function implementing the stateMonitorTas thread.
@@ -716,16 +564,16 @@ void AudioTask(void const * argument)
 /* USER CODE END Header_StateMonitorTask */
 void StateMonitorTask(void const * argument)
 {
-  /* USER CODE BEGIN StateMonitorTask */
+  /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for(;;)
   {
 	if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
 		sftdStateMonitor();
 	}
-    osDelay(10);
+    osDelay(1);
   }
-  /* USER CODE END StateMonitorTask */
+  /* USER CODE END 5 */
 }
 
 /**

@@ -1,10 +1,19 @@
-/*
- * Tone.c
- *
- *  Created on: Apr 6, 2024
- *      Author: chris
- */
-#include "Tone.h"
+/**
+ * @file Tone.c
+ * @brief Holds audio data for tone clip
+ * 
+ * @date 4/30/2024
+ * 
+ **/
+#include <SF_Tone.h>
+////////////////////////////////////////////////////////////////////////////////
+///
+///                           Internal Data
+///
+////////////////////////////////////////////////////////////////////////////////
+///
+/// tone clip 16-bit signed samples 
+///
 const int16_t Tone[400000] = {
 		0,
 		0,
@@ -400006,4 +400015,7 @@ const int16_t Tone[400000] = {
 		-6715,
 		-21904,
 		-21904};
+///
+/// Size of tone clip
+///
 const uint32_t sizeTone = sizeof(Tone)/sizeof(Tone[0]);

@@ -31,6 +31,10 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "SF_Shot.h"
+#include "SF_PwrOnConcise.h"
+#include "SF_Tone.h"
+#include "SF_Audio.h"
 #include "cmsis_os.h"
 
 /* USER CODE END Includes */
@@ -53,6 +57,8 @@ typedef struct {
 
 extern clip_info_t curClip;
 extern osMessageQId audioQueueHandle;
+extern DMA_HandleTypeDef hdma_spi3_tx;
+extern I2S_HandleTypeDef hi2s3;
 
 /* USER CODE END ET */
 
