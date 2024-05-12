@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -25,6 +26,11 @@
 #include "states.h" 
 #include "SFTD_states.h" 
 #include "system.h" 
+#include "AudioClips/PwrOnConcise.h"
+#include "AudioClips/Tone.h"
+#include "AudioClips/Shot.h"
+#include <stdio.h>
+#include <math.h>
 
 /* USER CODE END Includes */
 
@@ -40,12 +46,21 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#define MAX_DMA_VAL (uint32_t)(pow(2,16)-1)
 
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2S_HandleTypeDef hi2s3;
+DMA_HandleTypeDef hdma_spi3_tx;
+
 TIM_HandleTypeDef htim2;
 
+osThreadId buttonTaskHandle;
+osThreadId audioTaskHandle;
+osThreadId stateMonitorTasHandle;
+osMessageQId audioQueueHandle;
 /* USER CODE BEGIN PV */
 TIM_HandleTypeDef htim6;															//NEW CODE ADDED...1/6/24 FROM T10_x1-TIMER_EX3_COPY1
 TIM_HandleTypeDef htim2;
@@ -54,21 +69,83 @@ uint32_t pulse1_value = 21000;//500Hz
 uint32_t ccr_content;
 uint32_t pulse_p = 10; 
 uint32_t counter = 0; 
+clip_info_t curClip = {.clip = NONE, .slot = 0, .count = 0};
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_I2S3_Init(void);
+void ButtonTask(void const * argument);
+void AudioTask(void const * argument);
+void StateMonitorTask(void const * argument);
+
 /* USER CODE BEGIN PFP */
 void tim5_init(void); 
 void FIRE_LASER(uint32_t pulse_length);
+static  uint32_t _ReadPins();
+static  void     _Play(uint16_t* pBuf, uint32_t len);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static void PlayClip(audio_clips_t clip) {
+    curClip.clip = clip;
+    switch (clip) {
+        case WARNING:
+          _Play((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
+          break;
+        case POWER_ON:
+          _Play((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
+          break;
+        case SHOT:
+          _Play((uint16_t*)&Shot[0], sizeShot);
+          break;
+        case TONE:
+          _Play((uint16_t*)&Tone[0], sizeTone);
+          break;
+    default:
+      break;
+    }
+    curClip.slot++;
+}
+static uint32_t _ReadPins() {
+  uint32_t  res =   0;
+  res       =   HAL_GPIO_ReadPin(GPIOE, SW5_Pin)  <<  2;
+  res       |=  HAL_GPIO_ReadPin(GPIOE, SW6_Pin)  <<  1;
+  res       |=  HAL_GPIO_ReadPin(GPIOA, TRIGGER_Pin);
+  return  res;
+}
+static void _Play(uint16_t* pBuf, uint32_t len) {
+  uint8_t   k = 0;
+  uint8_t   i = len/MAX_DMA_VAL;
+  //
+  // assume audio clip is larger than max size (2^16)
+  //
+  do {
+    //
+    // Advance to start of next chunk
+    //
+    uint16_t* pData = &pBuf[k * MAX_DMA_VAL];
+    //
+    // Get the length of current chunk
+    //
+    uint32_t l        = len - MAX_DMA_VAL * k;
+    uint32_t clipSize = MIN(l, MAX_DMA_VAL);
+    //
+    // make sure we are ready before transmitting
+    //
+    while (HAL_I2S_GetState(&hi2s3) != HAL_I2S_STATE_READY);
+    HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t*)pData, clipSize);
+    k++;
+  } while (i-->0);
+  return;
+}
 
 /* USER CODE END 0 */
 
@@ -104,7 +181,9 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_TIM2_Init();
+  MX_I2S3_Init();
   /* USER CODE BEGIN 2 */
   //MX_TIM5_Init();
   sftdStateInit();
@@ -117,6 +196,49 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* definition and creation of audioQueue */
+  osMessageQDef(audioQueue, 16, uint16_t);
+  audioQueueHandle = osMessageCreate(osMessageQ(audioQueue), NULL);
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* definition and creation of buttonTask */
+  osThreadDef(buttonTask, ButtonTask, osPriorityNormal, 0, 128);
+  buttonTaskHandle = osThreadCreate(osThread(buttonTask), NULL);
+
+  /* definition and creation of audioTask */
+  osThreadDef(audioTask, AudioTask, osPriorityIdle, 0, 128);
+  audioTaskHandle = osThreadCreate(osThread(audioTask), NULL);
+
+  /* definition and creation of stateMonitorTas */
+  osThreadDef(stateMonitorTas, StateMonitorTask, osPriorityIdle, 0, 128);
+  stateMonitorTasHandle = osThreadCreate(osThread(stateMonitorTas), NULL);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   //uint16_t brightness = 0;
@@ -124,7 +246,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  sftdStateMonitor();
 
     /* USER CODE BEGIN 3 */
 
@@ -141,6 +262,14 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
+  /** Macro to configure the PLL multiplication factor
+  */
+  __HAL_RCC_PLL_PLLM_CONFIG(16);
+
+  /** Macro to configure the PLL clock source
+  */
+  __HAL_RCC_PLL_PLLSOURCE_CONFIG(RCC_PLLSOURCE_HSI);
+
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
@@ -153,6 +282,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -174,6 +304,40 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief I2S3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2S3_Init(void)
+{
+
+  /* USER CODE BEGIN I2S3_Init 0 */
+
+  /* USER CODE END I2S3_Init 0 */
+
+  /* USER CODE BEGIN I2S3_Init 1 */
+
+  /* USER CODE END I2S3_Init 1 */
+  hi2s3.Instance = SPI3;
+  hi2s3.Init.Mode = I2S_MODE_MASTER_TX;
+  hi2s3.Init.Standard = I2S_STANDARD_PHILIPS;
+  hi2s3.Init.DataFormat = I2S_DATAFORMAT_16B_EXTENDED;
+  hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_44K;
+  hi2s3.Init.CPOL = I2S_CPOL_LOW;
+  hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
+  hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
+  if (HAL_I2S_Init(&hi2s3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2S3_Init 2 */
+
+  /* USER CODE END I2S3_Init 2 */
+
+}
+
+/**
   * @brief TIM2 Initialization Function
   * @param None
   * @retval None
@@ -181,44 +345,71 @@ void SystemClock_Config(void)
 static void MX_TIM2_Init(void)
 {
 
-	  /* USER CODE BEGIN TIM2_Init 0 */
+  /* USER CODE BEGIN TIM2_Init 0 */
 
-	  /* USER CODE END TIM2_Init 0 */
+  /* USER CODE END TIM2_Init 0 */
 
-	  TIM_MasterConfigTypeDef sMasterConfig = {0};
-	  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
 
-	  /* USER CODE BEGIN TIM2_Init 1 */
+  /* USER CODE BEGIN TIM2_Init 1 */
 
-	  /* USER CODE END TIM2_Init 1 */
-	  htim2.Instance = TIM2;
-	  htim2.Init.Prescaler = 0;
-	  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-	  htim2.Init.Period = 4294967295;
-	  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
-	  {
-		Error_Handler();
-	  }
-	  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-	  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-	  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-	  {
-		Error_Handler();
-	  }
-	  sConfigOC.OCMode = TIM_OCMODE_TIMING;
-	  sConfigOC.Pulse = 0;
-	  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-	  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-	  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-	  {
-		Error_Handler();
-	  }
-	  /* USER CODE BEGIN TIM2_Init 2 */
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_TRIGGER;
+  sSlaveConfig.InputTrigger = TIM_TS_ITR0;
+  if (HAL_TIM_SlaveConfigSynchro(&htim2, &sSlaveConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
 
-	  /* USER CODE END TIM2_Init 2 */
-	  HAL_TIM_MspPostInit(&htim2);
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
 }
 
@@ -241,18 +432,17 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  //HAL_GPIO_WritePin(GPIOA, DISP_RED_Pin|IRLASER_Pin|DISP_GRN_Pin|DISP_BLU_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(GPIOA, FLASH_Pin|DISP_RED_Pin|IRLASER_Pin|DISP_GRN_Pin
                           |DISP_BLU_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, BLU_Pin|RED_Pin|DISP_LED5_Pin
+  HAL_GPIO_WritePin(GPIOB, GRN_Pin|BLU_Pin|RED_Pin|DISP_LED5_Pin
                           |DISP_LED4_Pin|DISP_LED3_Pin|DISP_LED2_Pin|DISP_LED1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin|GREEN_LASER_Pin
-                          |KEEPON_Pin|BATT_MSR_EN_Pin|DISP_LED9_Pin|LD4_Pin
-                          |DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin
+                          |GREEN_LASER_Pin|RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin
+                          |DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(DISP_LED10_GPIO_Port, DISP_LED10_Pin, GPIO_PIN_RESET);
@@ -265,17 +455,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = GRN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = RF_PWR_CT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
-
   /*Configure GPIO pin : TRIGGER_Pin */
   GPIO_InitStruct.Pin = TRIGGER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
@@ -284,9 +463,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : FLASH_Pin DISP_RED_Pin IRLASER_Pin DISP_GRN_Pin
                            DISP_BLU_Pin */
-  //GPIO_InitStruct.Pin = FLASH_Pin|DISP_RED_Pin|IRLASER_Pin|DISP_GRN_Pin
-  //                        |DISP_BLU_Pin;
-  GPIO_InitStruct.Pin = DISP_RED_Pin|IRLASER_Pin|DISP_GRN_Pin|DISP_BLU_Pin;//removed |FLASH 1/10/24 to test PWM function on A1
+  GPIO_InitStruct.Pin = FLASH_Pin|DISP_RED_Pin|IRLASER_Pin|DISP_GRN_Pin
+                          |DISP_BLU_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -300,19 +478,19 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : GRN_Pin BLU_Pin RED_Pin DISP_LED5_Pin
                            DISP_LED4_Pin DISP_LED3_Pin DISP_LED2_Pin DISP_LED1_Pin */
-  GPIO_InitStruct.Pin = BLU_Pin|RED_Pin|DISP_LED5_Pin
+  GPIO_InitStruct.Pin = GRN_Pin|BLU_Pin|RED_Pin|DISP_LED5_Pin
                           |DISP_LED4_Pin|DISP_LED3_Pin|DISP_LED2_Pin|DISP_LED1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DISP_LED13_Pin DISP_LED12_Pin DISP_LED11_Pin GREEN_LASER_Pin
-                           RF_PWR_CT_Pin KEEPON_Pin BATT_MSR_EN_Pin DISP_LED9_Pin
-                           DISP_LED8_Pin DISP_LED7_Pin DISP_LED6_Pin */
-  GPIO_InitStruct.Pin = DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin|GREEN_LASER_Pin
-                          |KEEPON_Pin|BATT_MSR_EN_Pin|DISP_LED9_Pin|LD4_Pin
-                          |DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin;
+  /*Configure GPIO pins : LD4_Pin DISP_LED13_Pin DISP_LED12_Pin DISP_LED11_Pin
+                           GREEN_LASER_Pin RF_PWR_CT_Pin KEEPON_Pin BATT_MSR_EN_Pin
+                           DISP_LED9_Pin DISP_LED8_Pin DISP_LED7_Pin DISP_LED6_Pin */
+  GPIO_InitStruct.Pin = LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin
+                          |GREEN_LASER_Pin|RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin
+                          |DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -332,17 +510,18 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(DISP_LED10_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
+  HAL_NVIC_SetPriorityGrouping( NVIC_PRIORITYGROUP_4 );
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 
 /***************************************************************************************************************************************/
-//			BEGINNING OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CONFIG 1/6/24				   //
+//			BEGINNING OF										FROM T10_x1-TIMER_EX3_COPYkl1 FOR TIMER6 CONFIG 1/6/24				   //
 void tim6_init(void)
 {
 	htim6.Instance = TIM6;
@@ -456,6 +635,98 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_ButtonTask */
+/**
+  * @brief  Function implementing the buttonTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_ButtonTask */
+void ButtonTask(void const * argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  uint32_t	curPinVal	=  0;
+  uint32_t 	oldPinVal   =  -1;
+  for(;;) {
+	curPinVal	=	_ReadPins();
+	//
+	// button release is required in between every playback iteration
+	//
+	if (curPinVal != oldPinVal || curPinVal == 3) {
+		oldPinVal	=	curPinVal;
+		//
+		// Only attempt to play clip if there isn't one already playing
+		//
+		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
+			switch (curPinVal) {
+  				case 3:
+  					osMessagePut (audioQueueHandle, WARNING, 100);
+  					break;
+  				case 6:
+  					osMessagePut (audioQueueHandle, SHOT, 100);
+  					break;
+//  				case 6:
+//  					osMessagePut (audioQueueHandle, TONE, 100);
+//  					break;
+  				default:
+  					break;
+			}
+		}
+	}
+  osDelay(50);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_AudioTask */
+/**
+* @brief Function implementing the audioTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_AudioTask */
+void AudioTask(void const * argument)
+{
+  /* USER CODE BEGIN AudioTask */
+    /* Infinite loop */
+    osEvent event;
+    audio_clips_t clip = 0;
+    PlayClip(POWER_ON);
+    //PlayClip(TONE);
+    for(;;) {
+        event = osMessageGet(audioQueueHandle, osWaitForever);
+        if (event.status == osEventMessage) {
+            event.def.message_id    = audioQueueHandle;
+            clip                    = (audio_clips_t)event.value.v;
+            PlayClip(clip);
+        }
+        osDelay(100);
+    }
+  /* USER CODE END AudioTask */
+}
+
+/* USER CODE BEGIN Header_StateMonitorTask */
+/**
+* @brief Function implementing the stateMonitorTas thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StateMonitorTask */
+void StateMonitorTask(void const * argument)
+{
+  /* USER CODE BEGIN StateMonitorTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
+		sftdStateMonitor();
+	}
+    osDelay(10);
+  }
+  /* USER CODE END StateMonitorTask */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.

@@ -31,11 +31,28 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "cmsis_os.h"
 
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+typedef enum {
+    NONE,
+    WARNING,
+    POWER_ON,
+    SHOT,
+    TONE,
+} audio_clips_t;
+
+typedef struct {
+    audio_clips_t   clip;
+    uint8_t         slot;
+    uint8_t			count;
+} clip_info_t;
+
+extern clip_info_t curClip;
+extern osMessageQId audioQueueHandle;
 
 /* USER CODE END ET */
 
@@ -51,9 +68,10 @@ void FIRE_LASER(uint32_t pulse_length);
 
 /* USER CODE END EM */
 
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
-void FIRE_LASER(uint32_t pulse_length);
 
 /* USER CODE BEGIN EFP */
 
