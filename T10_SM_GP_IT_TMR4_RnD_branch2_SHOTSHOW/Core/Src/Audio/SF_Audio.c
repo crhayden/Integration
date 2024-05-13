@@ -59,7 +59,7 @@ clip_info_t curClip = {.clip = NONE, .slot = 0, .count = 0};
 ///
 /// @return void
 ///
-static void _Play(uint16_t* pBuf, uint32_t len) {
+static void _StartDMA(uint16_t* pBuf, uint32_t len) {
   uint8_t   k = 0;
   uint8_t   i = len/MAX_DMA_VAL;
   //
@@ -91,20 +91,20 @@ static void _Play(uint16_t* pBuf, uint32_t len) {
 ///
 /// @return void
 ///
-static void PlayClip(audio_clips_t clip) {
+static void _SelectAudioClip(audio_clips_t clip) {
     curClip.clip = clip;
     switch (clip) {
         case WARNING:
-          _Play((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
+          _StartDMA((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
           break;
         case POWER_ON:
-          _Play((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
+          _StartDMA((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
           break;
         case SHOT:
-          _Play((uint16_t*)&Shot[0], sizeShot);
+          _StartDMA((uint16_t*)&Shot[0], sizeShot);
           break;
         case TONE:
-          _Play((uint16_t*)&Tone[0], sizeTone);
+          _StartDMA((uint16_t*)&Tone[0], sizeTone);
           break;
     default:
       break;
@@ -133,13 +133,13 @@ static uint32_t _ReadPins() {
 static void AudioTask(void const * argument) {
     osEvent 		event;
     audio_clips_t 	clip = 0;
-    PlayClip(POWER_ON);
+    _SelectAudioClip(POWER_ON);
     for (;;) {
         event = osMessageGet(audioQueueHandle, osWaitForever);
         if (event.status == osEventMessage) {
             event.def.message_id    = audioQueueHandle;
             clip                    = (audio_clips_t)event.value.v;
-            PlayClip(clip);
+            _SelectAudioClip(clip);
         }
         osDelay(100);
     }
