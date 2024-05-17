@@ -564,16 +564,15 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 /* USER CODE END Header_StateMonitorTask */
 void StateMonitorTask(void const * argument)
 {
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-	if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
-		sftdStateMonitor();
-	}
-    osDelay(1);
-  }
-  /* USER CODE END 5 */
+    /* USER CODE BEGIN 5 */
+    /* Infinite loop */
+    for(;;) {
+		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
+			sftdStateMonitor();
+    	}
+        osDelay(10);
+    }
+    /* USER CODE END 5 */
 }
 
 /**

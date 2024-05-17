@@ -31,6 +31,25 @@
 ///                           Internal Types
 ///
 ////////////////////////////////////////////////////////////////////////////////
+///
+/// Types of audio clips
+///
+typedef enum {
+    NONE,
+    WARNING,
+    POWER_ON,
+    SHOT,
+    TONE,
+} audio_clips_t;
+///
+/// Clip info
+///
+typedef struct {
+    audio_clips_t   clip;		// clip type
+    uint8_t         totalSlots;	// 1 slot = MAX_DMA_VAL
+    uint8_t			curSlot;	// currrent chunk of audio clip to be played
+    uint8_t			count;		// how many times the current clip has played
+} clip_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Data
@@ -45,7 +64,7 @@ osMessageQId	audioQueueHandle;
 ///
 /// Holds information about the current clip that is playing
 ///
-clip_info_t curClip = {.clip = NONE, .slot = 0, .count = 0};
+clip_info_t curClip = {.clip = NONE, .totalSlots = 0, .curSlot = 0, .count = 0};
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Functions
@@ -60,29 +79,12 @@ clip_info_t curClip = {.clip = NONE, .slot = 0, .count = 0};
 /// @return void
 ///
 static void _StartDMA(uint16_t* pBuf, uint32_t len) {
-  uint8_t   k = 0;
-  uint8_t   i = len/MAX_DMA_VAL;
-  //
-  // assume audio clip is larger than max size (2^16)
-  //
-  do {
-    //
-    // Advance to start of next chunk
-    //
-    uint16_t* pData = &pBuf[k * MAX_DMA_VAL];
-    //
-    // Get the length of current chunk
-    //
-    uint32_t l        = len - MAX_DMA_VAL * k;
-    uint32_t clipSize = MIN(l, MAX_DMA_VAL);
-    //
-    // make sure we are ready before transmitting
-    //
-    while (HAL_I2S_GetState(&hi2s3) != HAL_I2S_STATE_READY);
-    HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t*)pData, clipSize);
-    k++;
-  } while (i-->0);
-  return;
+	//
+	// assume audio clip is larger than max size (2^16)
+	//
+	uint32_t clipSize = MIN(len, MAX_DMA_VAL);
+	HAL_I2S_Transmit_DMA(&hi2s3, pBuf, clipSize);
+	return;
 }
 ///
 /// @brief  Supplies the DMA with appropriate audio clip data 
@@ -94,22 +96,22 @@ static void _StartDMA(uint16_t* pBuf, uint32_t len) {
 static void _SelectAudioClip(audio_clips_t clip) {
     curClip.clip = clip;
     switch (clip) {
-        case WARNING:
-          _StartDMA((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
-          break;
-        case POWER_ON:
-          _StartDMA((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
-          break;
-        case SHOT:
-          _StartDMA((uint16_t*)&Shot[0], sizeShot);
-          break;
-        case TONE:
-          _StartDMA((uint16_t*)&Tone[0], sizeTone);
-          break;
+		case WARNING:
+			_StartDMA((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
+			break;
+		case POWER_ON:
+		  	_StartDMA((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
+		  	break;
+		case SHOT:
+			_StartDMA((uint16_t*)&Shot[0], sizeShot);
+			break;
+		case TONE:
+			curClip.totalSlots = sizeTone/MAX_DMA_VAL;
+		    _StartDMA((uint16_t*)&Tone[0], sizeTone);
+		  	break;
     default:
       break;
     }
-    curClip.slot++;
 }
 ///
 /// @brief  Read pins from GPI pins
@@ -117,11 +119,11 @@ static void _SelectAudioClip(audio_clips_t clip) {
 /// @return uint32_t - pin value
 ///
 static uint32_t _ReadPins() {
-  uint32_t  res =   0;
-  res       =   HAL_GPIO_ReadPin(GPIOE, SW5_Pin)  <<  2;
-  res       |=  HAL_GPIO_ReadPin(GPIOE, SW6_Pin)  <<  1;
-  res       |=  HAL_GPIO_ReadPin(GPIOA, TRIGGER_Pin);
-  return  res;
+	uint32_t  res =   0;
+	res       =   HAL_GPIO_ReadPin(GPIOE, SW5_Pin)  <<  2;
+	res       |=  HAL_GPIO_ReadPin(GPIOE, SW6_Pin)  <<  1;
+	res       |=  HAL_GPIO_ReadPin(GPIOA, TRIGGER_Pin);
+	return	res;
 }
 ///
 /// @brief  Function implementing the audio task.
@@ -139,6 +141,7 @@ static void AudioTask(void const * argument) {
         if (event.status == osEventMessage) {
             event.def.message_id    = audioQueueHandle;
             clip                    = (audio_clips_t)event.value.v;
+        	osDelay(20);
             _SelectAudioClip(clip);
         }
         osDelay(100);
@@ -190,12 +193,38 @@ static void ButtonTask(void const * argument) {
 //------------------------------------------------------------------------------
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
-	if (curClip.clip == SHOT) {
-		curClip.count++;
-		if (curClip.count >=2) {
+	if (curClip.clip == TONE) {
+		//
+		// if we've reached the end, reset
+		//
+		if (++curClip.curSlot == curClip.totalSlots){
+			curClip.curSlot = 0;
+			return;
+		} else {
+			//
+			// Advance to start of next slot
+			//
+			uint16_t* pData = (uint16_t*)&Tone[curClip.curSlot * MAX_DMA_VAL];
+			//
+			// Get the length of current slot
+			//
+			uint32_t l        = sizeTone - MAX_DMA_VAL * curClip.curSlot;
+			uint32_t clipSize = MIN(l, MAX_DMA_VAL);
+			//
+			// restart the DMA
+			//
+			HAL_I2S_Transmit_DMA(&hi2s3, pData, clipSize);
+		}
+	} else if (curClip.clip == SHOT) {
+		//
+		// If this is the 2nd consecutive tigger pull - start the tone.
+		//
+		if (++curClip.count >=2) {
 			osMessagePut (audioQueueHandle, TONE, 0);
 			curClip.count = 0;
 		}
+	} else {
+		curClip.count = 0;
 	}
 }
 ////////////////////////////////////////////////////////////////////////////////

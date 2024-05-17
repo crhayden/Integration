@@ -41,22 +41,6 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-typedef enum {
-    NONE,
-    WARNING,
-    POWER_ON,
-    SHOT,
-    TONE,
-} audio_clips_t;
-
-typedef struct {
-    audio_clips_t   clip;
-    uint8_t         slot;
-    uint8_t			count;
-} clip_info_t;
-
-extern clip_info_t curClip;
-extern osMessageQId audioQueueHandle;
 extern DMA_HandleTypeDef hdma_spi3_tx;
 extern I2S_HandleTypeDef hi2s3;
 
