@@ -49,6 +49,7 @@ typedef struct {
     uint8_t         totalSlots;	// 1 slot = MAX_DMA_VAL
     uint8_t			curSlot;	// currrent chunk of audio clip to be played
     uint8_t			count;		// how many times the current clip has played
+    uint8_t			dartsFired; // how many times the current clip has played
 } clip_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -64,7 +65,7 @@ osMessageQId	audioQueueHandle;
 ///
 /// Holds information about the current clip that is playing
 ///
-clip_info_t curClip = {.clip = NONE, .totalSlots = 0, .curSlot = 0, .count = 0};
+clip_info_t curClip = {.clip = NONE, .totalSlots = 0, .curSlot = 0, .count = 0, .dartsFired = 0};
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Functions
@@ -170,10 +171,15 @@ static void ButtonTask(void const * argument) {
 		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
 			switch (curPinVal) {
 					case 3:
-						osMessagePut (audioQueueHandle, WARNING, 100);
+						if (curClip.dartsFired >= 2) {
+							osMessagePut (audioQueueHandle, TONE, 100);
+						} else {
+							osMessagePut (audioQueueHandle, WARNING, 100);
+						}
 						break;
 					case 6:
 						osMessagePut (audioQueueHandle, SHOT, 100);
+						curClip.dartsFired++;
 						break;
 	 				// case 6:
 	 				// 	osMessagePut (audioQueueHandle, TONE, 100);

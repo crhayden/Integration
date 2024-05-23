@@ -59,7 +59,14 @@ short int charging = 0;
 short int KEEPON_STATE = 0;
 short int CHRG_PLUGIN = 0;
 
+#define STEALTH_ENTER_COUNT 3
+typedef struct {
+	uint8_t buttonRelCnt;
+	uint8_t pinVal;
+	bool 	isPressed;
+} stealth_info_t;
 
+stealth_info_t stealthInfo = {};
 
 //STATE SPECIFIC EVENTS
 void state_PWR_OFF(int event, int parameter);
@@ -77,18 +84,30 @@ void state_CHARGE(int event, int parameter);
 
 void sftdState_stateEvent(int event, int parameter)
 {
-    if (state[SFTD_STATE].curr_state == PWR_OFF) state_PWR_OFF(event, parameter);
-    else if (state[SFTD_STATE].curr_state == WAKE_UP) state_WAKE_UP(event, parameter);
-    else if (state[SFTD_STATE].curr_state == TRIG_PULL) state_TRIG_PULL(event, parameter);
-    else if (state[SFTD_STATE].curr_state == SHOT_ONLY) state_SHOT_ONLY(event, parameter);
-    else if (state[SFTD_STATE].curr_state == SHOT_SOUND) state_SHOT_SOUND(event, parameter);
-	else if (state[SFTD_STATE].curr_state == MOD_LASER) state_MOD_LASER(event, parameter);
-	else if (state[SFTD_STATE].curr_state == ARC_BUTTON) state_ARC_BUTTON(event, parameter);
-	else if (state[SFTD_STATE].curr_state == TSR_EMPTY) state_TSR_EMPTY(event, parameter);
-	else if (state[SFTD_STATE].curr_state == TURN_ON) state_TURN_ON(event, parameter);
-	else if (state[SFTD_STATE].curr_state == MODE_SLCT) state_MODE_SLCT(event, parameter);
-	else if (state[SFTD_STATE].curr_state == TEST_MODE) state_TEST_MODE(event, parameter);
-	else if (state[SFTD_STATE].curr_state == CHARGE) state_CHARGE(event, parameter);
+    if (state[SFTD_STATE].curr_state == PWR_OFF) 
+    	state_PWR_OFF(event, parameter);
+    else if (state[SFTD_STATE].curr_state == WAKE_UP) 
+    	state_WAKE_UP(event, parameter);
+    else if (state[SFTD_STATE].curr_state == TRIG_PULL) 
+    	state_TRIG_PULL(event, parameter);
+    else if (state[SFTD_STATE].curr_state == SHOT_ONLY) 
+    	state_SHOT_ONLY(event, parameter);
+    else if (state[SFTD_STATE].curr_state == SHOT_SOUND) 
+    	state_SHOT_SOUND(event, parameter);
+	else if (state[SFTD_STATE].curr_state == MOD_LASER) 
+		state_MOD_LASER(event, parameter);
+	else if (state[SFTD_STATE].curr_state == ARC_BUTTON) 
+		state_ARC_BUTTON(event, parameter);
+	else if (state[SFTD_STATE].curr_state == TSR_EMPTY) 
+		state_TSR_EMPTY(event, parameter);
+	else if (state[SFTD_STATE].curr_state == TURN_ON) 
+		state_TURN_ON(event, parameter);
+	else if (state[SFTD_STATE].curr_state == MODE_SLCT) 
+		state_MODE_SLCT(event, parameter);
+	else if (state[SFTD_STATE].curr_state == TEST_MODE) 
+		state_TEST_MODE(event, parameter);
+	else if (state[SFTD_STATE].curr_state == CHARGE) 
+		state_CHARGE(event, parameter);
 }
 void sftdStateInit(void)
 {
@@ -124,15 +143,7 @@ void sftdStateInit(void)
  
 void sftdStateMonitor(void)
 {
-    // System Tick for State Time slice
-    if (timerExpired(SFTD_STATE_TIMER))
-    {        
-        // reset timer
-        timerReset(SFTD_STATE_TIMER);
-                   
-        // run state tick event
-        stateEventHandler(SFTD_STATE, evTIMER_TICK, TEST_RATE_MS);
-    }
+    stateEventHandler(SFTD_STATE, evTIMER_TICK, TEST_RATE_MS);
 }
  
 /*******************************************************************************
@@ -237,6 +248,12 @@ void state_CHARGE(int event, int parameter)
         case evTIMER_TICK:
         	charging = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
 			KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
+			uint8_t trigPin = HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin);
+			if (!trigPin) {
+				mode = getMode();
+				updateMode(mode);
+				state[SFTD_STATE].next_state = SHOT_ONLY;
+			}
 			if(KEEPON_STATE && !charging)
 			{
 				//mode = getMode();//retrieve rotary switch position, and assign to mode.
@@ -365,7 +382,14 @@ void state_SHOT_ONLY(int event, int parameter)
         	SM_Counter++;
         	next_mode = getMode();
         	KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
-        	CHRG_PLUGIN = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
+        	stealthInfo.pinVal = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
+        	if (stealthInfo.pinVal) {
+        		stealthInfo.isPressed = true;
+        	} 
+        	if (stealthInfo.isPressed && !stealthInfo.pinVal) {
+        		stealthInfo.buttonRelCnt++;
+        		stealthInfo.isPressed = false;
+        	}
 			if(TRIGGER)
         	{
 				while(!HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin));
@@ -404,9 +428,10 @@ void state_SHOT_ONLY(int event, int parameter)
 				state[SFTD_STATE].next_state = PWR_OFF;
 
 			}
-			else if(CHRG_PLUGIN&&KEEPON_STATE)
+			else if(stealthInfo.buttonRelCnt == STEALTH_ENTER_COUNT &&KEEPON_STATE)
 			{
 				state[SFTD_STATE].next_state = CHARGE;
+				stealthInfo.buttonRelCnt = 0;
 			}
             break;
 

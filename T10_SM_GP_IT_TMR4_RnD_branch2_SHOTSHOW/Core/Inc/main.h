@@ -35,6 +35,7 @@ extern "C" {
 #include "SF_PwrOnConcise.h"
 #include "SF_Tone.h"
 #include "SF_Audio.h"
+#include "stdbool.h"
 #include "cmsis_os.h"
 
 /* USER CODE END Includes */
