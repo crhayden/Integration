@@ -40,7 +40,7 @@ void initGPIOStates(void)
 	HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
 	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
 	HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, SET);
-	HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, SET);
+	//HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, SET);
 }
 
 short unsigned getMode(void)
@@ -49,7 +49,7 @@ short unsigned getMode(void)
 	SW5 = HAL_GPIO_ReadPin(SW5_GPIO_Port, SW5_Pin);
 	SW6 = HAL_GPIO_ReadPin(SW6_GPIO_Port, SW6_Pin);
 
-	MODE_STATE = (SW6*2)+(SW5*1);
+	MODE_STATE = (SW5*2)+(SW6*1);
 	return MODE_STATE;
 
 }
@@ -57,25 +57,25 @@ short unsigned getMode(void)
 void updateMode(long int mode)
 {
 	if(mode == 0)
-	{//SW5 & SW6 PRESSED..UNATTAINABLE STATE
-		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
-		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
-		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, SET);
+	{//SW4 & SW5 NO FLAG --- NORMAL MODE
+		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, SET);
+		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET);
+		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
 		HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, SET);
-		//HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET);
-		__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7000);
+		HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET);
+		//__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7000);
 	}
 	if(mode == 1)
-	{//SW6 PRESSED,STEALTH
+	{//SW4 FLAG SW5 NO FLAG -- STEALTH
 		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
-		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
+		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET);
 		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
 		HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, RESET);
-		//HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET);
-		__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7000);
+		HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET);
+		//__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7000);
 	}
 	if(mode == 2)
-	{//SW5 PRESSED, WARN_REENG, RED LED
+	{//SW5 FLAG, SW4 NO FLAG WARN_REENG, RED LED
 		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
 		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET);
 		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, SET);
@@ -88,8 +88,8 @@ void updateMode(long int mode)
 		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET);
 		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
 		HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, SET);
-		//HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET);
-		__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,1000);
+		HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET);
+		//__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,1000);
 	}
 
 }
@@ -110,7 +110,7 @@ short unsigned turnAllOff(void)
 	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
 	HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, RESET);
 	HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET);
-	__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7100);
+	//__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7100);
 	HAL_Delay(1);
 
 	//TURN OFF ALL DISPLAY LEDS...

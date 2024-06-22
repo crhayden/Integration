@@ -142,7 +142,7 @@ static void AudioTask(void const * argument) {
         if (event.status == osEventMessage) {
             event.def.message_id    = audioQueueHandle;
             clip                    = (audio_clips_t)event.value.v;
-        	osDelay(20);
+        	osDelay(30);//mS
             _SelectAudioClip(clip);
         }
         osDelay(100);
@@ -163,21 +163,21 @@ static void ButtonTask(void const * argument) {
 	//
 	// take action on button release only with exception of SW5 (warning clip)
 	//
-	if (curPinVal != oldPinVal || curPinVal == 3) {
+	if (curPinVal != oldPinVal || curPinVal == 5) {
 		oldPinVal	=	curPinVal;
 		//
 		// Only attempt to play clip if there isn't one already playing
 		//
 		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
 			switch (curPinVal) {
-					case 3:
+					case 5:
 						if (curClip.dartsFired >= 2) {
 							osMessagePut (audioQueueHandle, TONE, 100);
 						} else {
 							osMessagePut (audioQueueHandle, WARNING, 100);
 						}
 						break;
-					case 6:
+					case 0:
 						osMessagePut (audioQueueHandle, SHOT, 100);
 						curClip.dartsFired++;
 						break;

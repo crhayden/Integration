@@ -45,10 +45,13 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
 I2S_HandleTypeDef hi2s3;
 DMA_HandleTypeDef hdma_spi3_tx;
 
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim6;
 
 osThreadId stateMonitorTasHandle;
 /* USER CODE BEGIN PV */
@@ -57,8 +60,8 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim5;
 uint32_t pulse1_value = 21000;//500Hz
 uint32_t ccr_content;
-uint32_t pulse_p = 10; 
-uint32_t counter = 0; 
+uint32_t pulse_p = 10;
+uint32_t counter = 0;
 
 /* USER CODE END PV */
 
@@ -68,6 +71,8 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2S3_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_TIM6_Init(void);
 void StateMonitorTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -100,7 +105,7 @@ int main(void)
   /* USER CODE BEGIN Init */
   //tim6_init();
   //tim2_init();
-  tim5_init();
+  //tim5_init();
 
   /* USER CODE END Init */
 
@@ -115,10 +120,12 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_TIM2_Init();
+  tim5_init();
   MX_I2S3_Init();
+  MX_ADC1_Init();
+  //MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   SF_AudioInit();
-  //MX_TIM5_Init();
   sftdStateInit();
 
 
@@ -161,7 +168,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   //uint16_t brightness = 0;
-  keepOnTest();
+
   while (1)
   {
     /* USER CODE END WHILE */
@@ -220,6 +227,58 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_3;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -317,6 +376,46 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 24;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 65535;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+  HAL_TIM_RegisterCallback(&htim6, HAL_TIM_PERIOD_ELAPSED_CB_ID,HAL_TIM_PeriodElapsedCallback);
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -354,13 +453,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, FLASH_Pin|DISP_RED_Pin|IRLASER_Pin|DISP_GRN_Pin
                           |DISP_BLU_Pin, GPIO_PIN_RESET);
 
+  HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET);
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GRN_Pin|BLU_Pin|RED_Pin|DISP_LED5_Pin
                           |DISP_LED4_Pin|DISP_LED3_Pin|DISP_LED2_Pin|DISP_LED1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin
-                          |GREEN_LASER_Pin|RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin
+                          |RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin
                           |DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
@@ -408,7 +508,7 @@ static void MX_GPIO_Init(void)
                            GREEN_LASER_Pin RF_PWR_CT_Pin KEEPON_Pin BATT_MSR_EN_Pin
                            DISP_LED9_Pin DISP_LED8_Pin DISP_LED7_Pin DISP_LED6_Pin */
   GPIO_InitStruct.Pin = LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin
-                          |GREEN_LASER_Pin|RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin
+                          |RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin
                           |DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -427,6 +527,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DISP_LED10_GPIO_Port, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = GREEN_LASER_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
@@ -463,9 +569,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	pulse_p = 0;
 	if(counter++> pulse_p)
 	{
-		HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, RESET);
-		HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET);
-		HAL_TIM_Base_Stop(&htim6);
+		HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET);
+		HAL_TIM_Base_Stop_IT(&htim6);
 		pulse_p = 0;
 		counter = 0;
 	}
@@ -476,8 +581,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void FIRE_LASER(uint32_t pulse_length)
 {
 	//1. turn on laser
-	HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET);
-	//HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, SET);
+	HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET);
 
 	//2. start timer
 	htim6.Instance = TIM6;
@@ -488,6 +592,7 @@ void FIRE_LASER(uint32_t pulse_length)
 		Error_Handler();
 	}
 	HAL_TIM_Base_Start_IT(&htim6);
+
 }
 
 
@@ -537,10 +642,11 @@ void tim5_init(void)
 	}
 }
 
+
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	/*
-	if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+
+	/*if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
 	{
 		ccr_content = HAL_TIM_ReadCapturedValue(&htim2, TIM_CHANNEL_1);
 		__HAL_TIM_SET_COMPARE(htim, TIM_CHANNEL_1,ccr_content+pulse1_value);
@@ -564,7 +670,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 /* USER CODE END Header_StateMonitorTask */
 void StateMonitorTask(void const * argument)
 {
-    /* USER CODE BEGIN 5 */
+  /* USER CODE BEGIN 5 */
     /* Infinite loop */
     for(;;) {
         if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
@@ -572,7 +678,7 @@ void StateMonitorTask(void const * argument)
         }
         osDelay(10);
     }
-    /* USER CODE END 5 */
+  /* USER CODE END 5 */
 }
 
 /**

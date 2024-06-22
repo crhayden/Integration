@@ -31,9 +31,9 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "SF_Shot.h"
-#include "SF_PwrOnConcise.h"
-#include "SF_Tone.h"
+#include <AudioClips/SF_Shot.h>
+#include <AudioClips/SF_PwrOnConcise.h>
+#include <AudioClips/SF_Tone.h>
 #include "SF_Audio.h"
 #include "stdbool.h"
 #include "cmsis_os.h"
@@ -79,6 +79,8 @@ void Error_Handler(void);
 #define MODE_GPIO_Port GPIOE
 #define SW5_Pin GPIO_PIN_6
 #define SW5_GPIO_Port GPIOE
+#define GREEN_LASER_Pin GPIO_PIN_9
+#define GREEN_LASER_GPIO_Port GPIOE
 #define TRIGGER_Pin GPIO_PIN_0
 #define TRIGGER_GPIO_Port GPIOA
 #define TRIGGER_EXTI_IRQn EXTI0_IRQn
@@ -114,8 +116,6 @@ void Error_Handler(void);
 #define LOW_BATT_GPIO_Port GPIOA
 #define DISP_LED10_Pin GPIO_PIN_11
 #define DISP_LED10_GPIO_Port GPIOC
-#define GREEN_LASER_Pin GPIO_PIN_0
-#define GREEN_LASER_GPIO_Port GPIOD
 #define RF_PWR_CT_Pin GPIO_PIN_1
 #define RF_PWR_CT_GPIO_Port GPIOD
 #define KEEPON_Pin GPIO_PIN_2
