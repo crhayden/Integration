@@ -86,8 +86,6 @@ void Error_Handler(void);
 #define MODE_GPIO_Port GPIOE
 #define SW5_Pin GPIO_PIN_6
 #define SW5_GPIO_Port GPIOE
-#define GREEN_LASER_Pin GPIO_PIN_9 
-#define GREEN_LASER_GPIO_Port GPIOE 
 #define TRIGGER_Pin GPIO_PIN_0
 #define TRIGGER_GPIO_Port GPIOA
 #define TRIGGER_EXTI_IRQn EXTI0_IRQn
@@ -105,6 +103,8 @@ void Error_Handler(void);
 #define FINGER_GPIO_Port GPIOB
 #define SW6_Pin GPIO_PIN_7
 #define SW6_GPIO_Port GPIOE
+#define GREEN_LASER_Pin GPIO_PIN_9
+#define GREEN_LASER_GPIO_Port GPIOE
 #define GRN_Pin GPIO_PIN_12
 #define GRN_GPIO_Port GPIOB
 #define BLU_Pin GPIO_PIN_13
