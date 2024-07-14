@@ -16,12 +16,25 @@
 ///                           Internal Macros
 ///
 ////////////////////////////////////////////////////////////////////////////////
+#define NUM_BAT_SAMPLES 10
+#define HYSTERESIS		0.01f
+#define GOOD_THRESHOLD	3.6f
+#define LOW_THRESHOLD 	3.26f
+#define DEAD_THRESHOLD	2.75f
 ////////////////////////////////////////////////////////////////////////////////
 ////
 ///
 ///                           Internal Types
 ///
 ////////////////////////////////////////////////////////////////////////////////
+///
+/// Battery states
+///
+typedef enum {
+	GOOD,
+	LOW,
+	DEAD,
+} bat_state_t;
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Data
@@ -31,11 +44,34 @@
 /// task and  handles
 ///
 osThreadId 		batteryTaskHandle;
+///
+/// current battery state
+///
+bat_state_t 	batteryState = GOOD;
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Functions
 ///
 ////////////////////////////////////////////////////////////////////////////////
+static void _setLED() {
+	switch (batteryState){
+	case GOOD:
+		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
+		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
+		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);	
+		break;
+	case LOW:
+		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
+		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
+		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, SET);
+		break;
+	case DEAD:
+		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET);
+		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
+		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, SET);
+		break;
+	}
+}
 ///
 /// @brief  Function implementing the battery task.
 ///
@@ -64,27 +100,44 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc1) {
 		// Don't make updated when we are in stealth mode
 		//
 		if (systemState != CHARGE) {
-			uint32_t adcVal = HAL_ADC_GetValue (hadc1);
+			const uint32_t maxADCVal = 4095;
 
-			uint32_t maxADCVal = 4095;
-
-			float voltage = (((float)adcVal/(float)maxADCVal) * 3.3) * 1.36;
-
-			if (voltage > 2.475) {
-				HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET);
-				HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, SET);
-				HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
-				// blue
-			} else if (voltage > 2.178) {
-				HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
-				HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
-				HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
-				// green
-			} else {
-				HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET);
-				HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
-				HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, SET);
-				// red
+			float voltage = 0;
+			for (int i = 0; i<=NUM_BAT_SAMPLES; i++) {
+				uint32_t adcVal = HAL_ADC_GetValue (hadc1);
+				voltage += (((float)adcVal/(float)maxADCVal) * 3.3) * 1.6f;
+			}
+			voltage = voltage/NUM_BAT_SAMPLES;
+			switch (batteryState) {
+				case GOOD:
+					if (voltage < DEAD_THRESHOLD - HYSTERESIS) {
+						batteryState = DEAD;
+						_setLED();
+					} else if (voltage < GOOD_THRESHOLD - HYSTERESIS) {		
+						batteryState = LOW;
+						_setLED();
+					} else if (voltage > GOOD_THRESHOLD + HYSTERESIS) {
+						batteryState = GOOD;
+						_setLED();	
+					}
+					break;
+				case LOW:
+					if (voltage < DEAD_THRESHOLD - HYSTERESIS) {
+						batteryState = DEAD;
+						_setLED();
+					} else if (voltage > GOOD_THRESHOLD + HYSTERESIS) {
+						batteryState = GOOD;
+						_setLED();
+					}
+					break;
+				case DEAD:
+					if (voltage > LOW_THRESHOLD + HYSTERESIS) {
+						batteryState = LOW;
+						_setLED();
+					}
+					break;
+				default:
+					break;
 			}
 		}
 	}

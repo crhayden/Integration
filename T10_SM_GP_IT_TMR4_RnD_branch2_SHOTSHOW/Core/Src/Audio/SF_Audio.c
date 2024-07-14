@@ -1,5 +1,5 @@
 /**
- * @file SF_Audio.h
+ * @file SF_Audio.c
  * @brief Manages audio playback & monitors buttons 
  * 
  * @date 4/30/2024
@@ -142,7 +142,7 @@ static void AudioTask(void const * argument) {
         if (event.status == osEventMessage) {
             event.def.message_id    = audioQueueHandle;
             clip                    = (audio_clips_t)event.value.v;
-        	osDelay(30);//mS
+        	osDelay(30);
             _SelectAudioClip(clip);
         }
         osDelay(100);

@@ -31,6 +31,10 @@ typedef struct
 	int temp_state;
 } tSTATE;
 
+typedef enum
+{
+    PWR_OFF,WAKE_UP,TRIG_PULL,SHOT_ONLY,SHOT_SOUND,MOD_LASER,ARC_BUTTON,TSR_EMPTY,TURN_ON,MODE_SLCT,TEST_MODE,CHARGE,NUM_STATES
+} state_t;
 /* Public variables ----------------------------------------------------------*/
 extern tSTATE state[NUM_STATE_MACHINES];
 

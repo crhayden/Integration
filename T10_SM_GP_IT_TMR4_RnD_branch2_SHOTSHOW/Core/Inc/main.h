@@ -35,8 +35,13 @@ extern "C" {
 #include <AudioClips/SF_PwrOnConcise.h>
 #include <AudioClips/SF_Tone.h>
 #include "SF_Audio.h"
+#include "SF_Battery.h"
+#include "states.h"
 #include "stdbool.h"
 #include "cmsis_os.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 
 /* USER CODE END Includes */
 
@@ -44,6 +49,8 @@ extern "C" {
 /* USER CODE BEGIN ET */
 extern DMA_HandleTypeDef hdma_spi3_tx;
 extern I2S_HandleTypeDef hi2s3;
+extern ADC_HandleTypeDef hadc1;
+extern state_t systemState;
 
 /* USER CODE END ET */
 
@@ -79,8 +86,8 @@ void Error_Handler(void);
 #define MODE_GPIO_Port GPIOE
 #define SW5_Pin GPIO_PIN_6
 #define SW5_GPIO_Port GPIOE
-#define GREEN_LASER_Pin GPIO_PIN_9
-#define GREEN_LASER_GPIO_Port GPIOE
+#define GREEN_LASER_Pin GPIO_PIN_9 
+#define GREEN_LASER_GPIO_Port GPIOE 
 #define TRIGGER_Pin GPIO_PIN_0
 #define TRIGGER_GPIO_Port GPIOA
 #define TRIGGER_EXTI_IRQn EXTI0_IRQn

@@ -15,11 +15,6 @@ extern TIM_HandleTypeDef htim5;
 
 enum
 {
-    PWR_OFF,WAKE_UP,TRIG_PULL,SHOT_ONLY,SHOT_SOUND,MOD_LASER,ARC_BUTTON,TSR_EMPTY,TURN_ON,MODE_SLCT,TEST_MODE,CHARGE,NUM_STATES
-};
-
-enum
-{
 	OFF,ARM_RDY,WARN_REENG,STEALTH,NUM_MODES
 };
 
@@ -58,7 +53,6 @@ volatile short int SM_Flag = 0;
 short int charging = 0;
 short int KEEPON_STATE = 0;
 short int CHRG_PLUGIN = 0;
-
 #define STEALTH_ENTER_COUNT 3
 typedef struct {
 	uint8_t buttonRelCnt;
@@ -67,7 +61,7 @@ typedef struct {
 } stealth_info_t;
 
 stealth_info_t stealthInfo = {};
-
+state_t systemState;
 //STATE SPECIFIC EVENTS
 void state_PWR_OFF(int event, int parameter);
 void state_WAKE_UP(int event, int parameter);
@@ -116,7 +110,6 @@ void sftdStateInit(void)
 	 * #define PWR_MON_Pin GPIO_PIN_4
 	   #define PWR_MON_GPIO_Port GPIOE
 	 */
-	//keepOnTest();
 	turnAllOff();
 	//INITIALIZE GPIO STATES
 	initGPIOStates();
@@ -130,21 +123,148 @@ void sftdStateInit(void)
 	//Initialize state machine timer
 	timerInit(SFTD_STATE_TIMER, TEST_RATE_MS);
 	//check for charging, and power button off..go into CHARGE State if charging
-	charging = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
+	//charging = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
 	KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
 	if(KEEPON_STATE && !charging)
 	{
 		stateInit(SFTD_STATE, TURN_ON, NUM_STATES);
+		systemState = TURN_ON;
 	}
 	else if(!KEEPON_STATE && charging)
 	{
 		stateInit(SFTD_STATE, CHARGE, NUM_STATES);
+		systemState = CHARGE;
 	}
 }
  
 void sftdStateMonitor(void)
 {
-    stateEventHandler(SFTD_STATE, evTIMER_TICK, TEST_RATE_MS);
+    //stateEventHandler(SFTD_STATE, evTIMER_TICK, TEST_RATE_MS);
+    // System Tick for State Time slice
+    // if (timerExpired(SFTD_STATE_TIMER))
+    // {        
+    //     // reset timer
+    //     timerReset(SFTD_STATE_TIMER);
+                   
+        // run state tick event
+        stateEventHandler(SFTD_STATE, evTIMER_TICK, TEST_RATE_MS);
+    //}
+}
+ 
+/*******************************************************************************
+ * Function Name  : state_PWR_OFF()
+ * State          :
+ * Description    :
+ * Input          : event, event parameter
+ * Next States    : ...
+ *******************************************************************************/
+void state_PWR_OFF(int event, int parameter)
+{
+     switch (event)
+    {
+        case evENTER_STATE:
+        	systemState = PWR_OFF;
+        	SM_Counter = 0;
+        	State_Counter = 0;
+        	turnAllOff();
+            break;
+
+        case evTIMER_TICK:
+			while ((SM_Counter < 7000)&&(!KEEPON_STATE))
+			  {
+				  //State_Counter++;
+				  SM_Counter += 10;
+				  __HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,SM_Counter);
+				  HAL_Delay(1);
+				  KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
+				  //CHRG_PLUGIN = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
+				  if(!KEEPON_STATE&&(State_Counter++ > offTimer))
+					{
+						//TURN DEVICE OFF...
+						HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
+
+					}
+				  else if(KEEPON_STATE&&(State_Counter < offTimer))
+					{
+						//MOVE BACK TO OPERATION...
+					  	mode = getMode();//retrieve rotary switch position, and assign to mode.
+						updateMode(mode);//update laser, flash, LED states.
+						laserPulse = laser_pulse[getSwitch()];
+						state[SFTD_STATE].next_state = SHOT_ONLY;
+
+					}
+				  else if(CHRG_PLUGIN)
+				  {
+					  state[SFTD_STATE].next_state = CHARGE;
+
+				  }
+			  }
+
+			  while ((SM_Counter > 0)&&(!KEEPON_STATE))
+			  {
+				  //State_Counter++;
+				  SM_Counter -= 10;
+				  __HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,SM_Counter);
+				  HAL_Delay(1);
+				  KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
+				  if(!KEEPON_STATE&&(State_Counter++ > offTimer))
+					{
+						//TURN DEVICE OFF...
+						HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
+
+					}
+				  else if(KEEPON_STATE&&(State_Counter < offTimer))
+					{
+						//MOVE BACK TO OPERATION...
+						mode = getMode();//retrieve rotary switch position, and assign to mode.
+						updateMode(mode);//update laser, flash, LED states.
+						laserPulse = laser_pulse[getSwitch()];
+						state[SFTD_STATE].next_state = SHOT_ONLY;
+
+					}
+				  else if(CHRG_PLUGIN)
+				  {
+					  state[SFTD_STATE].next_state = CHARGE;
+
+				  }
+			  }
+            break;
+
+        case evEXIT_STATE:
+            break;
+    }
+}
+
+
+/*******************************************************************************
+ * Function Name  : state_WAKE_UP()
+ * State          :
+ * Description    : 
+ * Input          : event, event parameter
+ * Next States    : ...
+ *******************************************************************************/
+void state_WAKE_UP(int event, int parameter)
+{
+    switch (event)
+    {
+        case evENTER_STATE:
+        systemState = WAKE_UP;          
+            break;
+
+        case evSELECT_BUTTON_PRESSED:
+            break;
+
+        case evTIMER_TICK:
+        	HAL_GPIO_TogglePin(DISP_LED11_GPIO_Port, DISP_LED11_Pin);
+        	if(HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin))
+        	{
+        		state[SFTD_STATE].next_state = PWR_OFF;
+        	}
+            break;
+
+        case evEXIT_STATE:             
+            break;
+    }
 }
 
 /*******************************************************************************
@@ -159,11 +279,47 @@ void state_TURN_ON(int event, int parameter)
      switch (event)
     {
         case evENTER_STATE:
+        	systemState = TURN_ON;
+        	//START TURN ON SOUND...
         	initDisp();
             break;
 
         case evTIMER_TICK:
+        	//MOVE TO SHOT ONLY
         	state[SFTD_STATE].next_state = SHOT_ONLY;
+            break;
+
+        case evEXIT_STATE:
+            break;
+    }
+}
+
+/*******************************************************************************
+ * Function Name  : state_MODE_SLCT()
+ * State          :
+ * Description    :
+ * Input          : event, event parameter
+ * Next States    : ...
+ *******************************************************************************/
+void state_MODE_SLCT(int event, int parameter)
+{
+     switch (event)
+    {
+        case evENTER_STATE:
+        	systemState = MODE_SLCT;
+			/*red_laser_en = !red_laser_en;
+			red_lasers(red_laser_en);
+			mode_sound(1);
+			myTimer = 0; */
+            break;
+
+        case evTIMER_TICK:
+			/*if(myTimer++ < 10);			//minimum zap time
+			else
+			{
+				mode_sound(0);
+				state[SFTD_STATE].next_state = state[SFTD_STATE].call_state;
+			}*/
             break;
 
         case evEXIT_STATE:
@@ -183,6 +339,7 @@ void state_SHOT_ONLY(int event, int parameter)
      switch (event)
     {
         case evENTER_STATE:
+        	systemState = SHOT_ONLY;
 			//TRIG_HELD = 0;
         	SM_Counter = 0;
         	State_Counter = 0;
@@ -192,10 +349,10 @@ void state_SHOT_ONLY(int event, int parameter)
         	SM_Counter++;
         	next_mode = getMode();
         	KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
-        	stealthInfo.pinVal = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
+        	//stealthInfo.pinVal = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
         	if (stealthInfo.pinVal) {
         		stealthInfo.isPressed = true;
-        	}
+        	} 
         	if (stealthInfo.isPressed && !stealthInfo.pinVal) {
         		stealthInfo.buttonRelCnt++;
         		stealthInfo.isPressed = false;
@@ -270,6 +427,7 @@ void state_TRIG_PULL(int event, int parameter)
     switch (event)
     {
         case evENTER_STATE:
+        	systemState = TRIG_PULL;
 			//red_lasers(red_laser_en);
             break;
 
@@ -288,9 +446,30 @@ void state_TRIG_PULL(int event, int parameter)
 			{
 				state[SFTD_STATE].next_state = state[SFTD_STATE].call_state;
 			}
+			/*
+			while(((!(PINB & (1<<TRIGGER))) && !done) && TRIG_HELD)//looking for trigger held...
+			{//this is constantly polling, and will keep state machine from advancing to other states if trigger is still held.
+				if(ten_second_tmr_exp)//if trigger held longer than 10 seconds, change modes of operation
+				{
+					//state[SFTD_STATE].next_state = ADVC_PRGM;
+					play_sound(TONE_SELECT);
+					flash_leds('G', 1, 100, 0);
+					done = 1;					//gets us out of this while loop so we can advance to the next state
+					roundsShot = 0;				//reset round counter for going into sensor mode.
+					myCounter = 0;
+				}
+			}
+			if(!ten_second_tmr_exp && TRIG_HELD)
+			{
+				state[SFTD_STATE].next_state = state[SFTD_STATE].call_state;
+			}*/
             break;
 
         case evEXIT_STATE:
+			/*ten_second_tmr_exp = 0;
+			done = 0;
+			//while_not = 0;
+			myCounter = 0;*/
             break;
     }
 }
@@ -307,8 +486,12 @@ void state_MOD_LASER(int event, int parameter)
      switch (event)
     {
         case evENTER_STATE:
+        	systemState = MOD_LASER;
         	//
         	FIRE_LASER(laserPulse);
+			/*pulse_lsr1();
+			myTimer = 0;
+			while_not = 1; */
             break;
 
         case evTIMER_TICK:
@@ -326,199 +509,14 @@ void state_MOD_LASER(int event, int parameter)
 
         case evEXIT_STATE:
         	TRIGGER = 0;
+			/*TRIG_HELD = 1;
+			zap_sound(0);
+			myTimer = 0;
+			setBit(PORTE,TAZE_LED);
+			red_lasers(red_laser_en);  */
             break;
     }
 }
- 
-/*******************************************************************************
- * Function Name  : state_PWR_OFF()
- * State          :
- * Description    :
- * Input          : event, event parameter
- * Next States    : ...
- *******************************************************************************/
-void state_PWR_OFF(int event, int parameter)
-{
-     switch (event)
-    {
-        case evENTER_STATE:
-        	SM_Counter = 0;
-        	State_Counter = 0;
-        	turnAllOff();
-            break;
-
-        case evTIMER_TICK:
-			while ((SM_Counter < 7000)&&(!KEEPON_STATE))
-			  {
-				  //State_Counter++;
-				  SM_Counter += 10;
-				  //__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,SM_Counter);
-				  HAL_Delay(1);
-				  KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
-				  CHRG_PLUGIN = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
-				  if(!KEEPON_STATE&&(State_Counter++ > offTimer))
-					{
-						//TURN DEVICE OFF...
-						HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
-
-					}
-				  else if(KEEPON_STATE&&(State_Counter < offTimer))
-					{
-						//MOVE BACK TO OPERATION...
-					  	mode = getMode();//retrieve rotary switch position, and assign to mode.
-						updateMode(mode);//update laser, flash, LED states.
-						laserPulse = laser_pulse[getSwitch()];
-						state[SFTD_STATE].next_state = SHOT_ONLY;
-
-					}
-				  else if(CHRG_PLUGIN)
-				  {
-					  state[SFTD_STATE].next_state = CHARGE;
-
-				  }
-			  }
-
-			  while ((SM_Counter > 0)&&(!KEEPON_STATE))
-			  {
-				  //State_Counter++;
-				  SM_Counter -= 10;
-				  //__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,SM_Counter);
-				  HAL_Delay(1);
-				  KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
-				  if(!KEEPON_STATE&&(State_Counter++ > offTimer))
-					{
-						//TURN DEVICE OFF...
-						HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
-
-					}
-				  else if(KEEPON_STATE&&(State_Counter < offTimer))
-					{
-						//MOVE BACK TO OPERATION...
-						mode = getMode();//retrieve rotary switch position, and assign to mode.
-						updateMode(mode);//update laser, flash, LED states.
-						laserPulse = laser_pulse[getSwitch()];
-						state[SFTD_STATE].next_state = SHOT_ONLY;
-
-					}
-				  else if(CHRG_PLUGIN)
-				  {
-					  state[SFTD_STATE].next_state = CHARGE;
-
-				  }
-			  }
-            break;
-
-        case evEXIT_STATE:
-            break;
-    }
-}
-
-/*******************************************************************************
- * Function Name  : state_CHARGE()
- * State          :
- * Description    : Stay in this state, until USB cable unplugged
- * Input          : event, event parameter
- * Next States    : ...
- *******************************************************************************/
-void state_CHARGE(int event, int parameter)
-{
-     switch (event)
-    {
-        case evENTER_STATE:
-        	turnAllOff();
-        	turnOffDisp();
-            break;
-
-        case evTIMER_TICK:
-        	charging = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
-			KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
-			uint8_t trigPin = HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin);
-			if (!trigPin) {
-				mode = getMode();
-				updateMode(mode);
-				state[SFTD_STATE].next_state = SHOT_ONLY;
-			}
-			if(KEEPON_STATE && !charging)
-			{
-
-			}
-			else if(!KEEPON_STATE)
-			{
-				keepOnState(0);//turn off
-			}
-            break;
-
-        case evEXIT_STATE:
-        	recallDisp();
-            break;
-    }
-}
-
-/*******************************************************************************
- * Function Name  : state_WAKE_UP()
- * State          :
- * Description    : 
- * Input          : event, event parameter
- * Next States    : ...
- *******************************************************************************/
-void state_WAKE_UP(int event, int parameter)
-{
-    switch (event)
-    {
-        case evENTER_STATE:          
-            break;
-
-        case evSELECT_BUTTON_PRESSED:
-            break;
-
-        case evTIMER_TICK:
-        	HAL_GPIO_TogglePin(DISP_LED11_GPIO_Port, DISP_LED11_Pin);
-        	if(HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin))
-        	{
-        		state[SFTD_STATE].next_state = PWR_OFF;
-        	}
-            break;
-
-        case evEXIT_STATE:             
-            break;
-    }
-}
-
-
-/*******************************************************************************
- * Function Name  : state_MODE_SLCT()
- * State          :
- * Description    :
- * Input          : event, event parameter
- * Next States    : ...
- *******************************************************************************/
-void state_MODE_SLCT(int event, int parameter)
-{
-     switch (event)
-    {
-        case evENTER_STATE:
-			/*red_laser_en = !red_laser_en;
-			red_lasers(red_laser_en);
-			mode_sound(1);
-			myTimer = 0; */
-            break;
-
-        case evTIMER_TICK:
-			/*if(myTimer++ < 10);			//minimum zap time
-			else
-			{
-				mode_sound(0);
-				state[SFTD_STATE].next_state = state[SFTD_STATE].call_state;
-			}*/
-            break;
-
-        case evEXIT_STATE:
-            break;
-    }
-}
-
-
-
 
 /*******************************************************************************
  * Function Name  : state_SHOT_SOUND()
@@ -532,6 +530,7 @@ void state_SHOT_SOUND(int event, int parameter)
      switch (event)
     {
         case evENTER_STATE:
+        	systemState = SHOT_SOUND;
 			//if(enStatus.ss_en)zap_sound(1);
 			//if(enStatus.rfd_en)rfd_tmr_req = true;
             break;
@@ -560,6 +559,7 @@ void state_ARC_BUTTON(int event, int parameter)
      switch (event)
     {
         case evENTER_STATE:
+        	systemState = ARC_BUTTON;
 			//zap_sound(1);
 			//myTimer = 0;
             break;
@@ -592,6 +592,7 @@ void state_TSR_EMPTY(int event, int parameter)
      switch (event)
     {
         case evENTER_STATE:
+        	systemState = TSR_EMPTY;
 			/*timerInit(SFTD_STATE_TIMER, 500);
 			clearBit(PORTC,FAULT_LED);
 			while_not = 1; */
@@ -623,6 +624,7 @@ void state_TEST_MODE(int event, int parameter)
      switch (event)
     {
 		 case evENTER_STATE:
+		 	systemState = TEST_MODE;
 		/* myTimer = 0;
 		 myCounter = 0;
 		 END = 0;
@@ -679,6 +681,50 @@ void state_TEST_MODE(int event, int parameter)
     }
 }
 
+/*******************************************************************************
+ * Function Name  : state_CHARGE()
+ * State          :
+ * Description    : Stay in this state, until USB cable unplugged
+ * Input          : event, event parameter
+ * Next States    : ...
+ *******************************************************************************/
+void state_CHARGE(int event, int parameter)
+{
+     switch (event)
+    {
+        case evENTER_STATE:
+        	systemState = CHARGE;
+        	turnAllOff();
+        	turnOffDisp();
+            break;
+
+        case evTIMER_TICK:
+        	//charging = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
+			KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
+			uint8_t trigPin = HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin);
+			if (!trigPin) {
+				mode = getMode();
+				updateMode(mode);
+				state[SFTD_STATE].next_state = SHOT_ONLY;
+			}
+			if(KEEPON_STATE && !charging)
+			{
+				//mode = getMode();//retrieve rotary switch position, and assign to mode.
+				//updateMode(mode);//update laser, flash, LED states.
+				//laserPulse = laser_pulse[getSwitch()];
+				//state[SFTD_STATE].next_state = SHOT_ONLY;
+			}
+			else if(!KEEPON_STATE)
+			{
+				keepOnState(0);//turn off
+			}
+            break;
+
+        case evEXIT_STATE:
+        	recallDisp();
+            break;
+    }
+}
 
 
 

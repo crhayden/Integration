@@ -26,7 +26,6 @@
 #include "states.h" 
 #include "SFTD_states.h" 
 #include "system.h" 
-#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,8 +59,8 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim5;
 uint32_t pulse1_value = 21000;//500Hz
 uint32_t ccr_content;
-uint32_t pulse_p = 10;
-uint32_t counter = 0;
+uint32_t pulse_p = 10; 
+uint32_t counter = 0; 
 
 /* USER CODE END PV */
 
@@ -105,7 +104,7 @@ int main(void)
   /* USER CODE BEGIN Init */
   //tim6_init();
   //tim2_init();
-  //tim5_init();
+  tim5_init();
 
   /* USER CODE END Init */
 
@@ -120,12 +119,13 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_TIM2_Init();
-  tim5_init();
   MX_I2S3_Init();
   MX_ADC1_Init();
-  //MX_TIM6_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   SF_AudioInit();
+  SF_BatteryInit();
+  //MX_TIM5_Init();
   sftdStateInit();
 
 
@@ -167,8 +167,6 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //uint16_t brightness = 0;
-
   while (1)
   {
     /* USER CODE END WHILE */
@@ -385,7 +383,6 @@ static void MX_TIM6_Init(void)
 
   /* USER CODE BEGIN TIM6_Init 0 */
 
-
   /* USER CODE END TIM6_Init 0 */
 
   TIM_MasterConfigTypeDef sMasterConfig = {0};
@@ -409,8 +406,8 @@ static void MX_TIM6_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM6_Init 2 */
-  HAL_TIM_RegisterCallback(&htim6, HAL_TIM_PERIOD_ELAPSED_CB_ID,HAL_TIM_PeriodElapsedCallback);
-
+  HAL_TIM_RegisterCallback(&htim6, HAL_TIM_PERIOD_ELAPSED_CB_ID, HAL_TIM_PeriodElapsedCallback);
+  //HAL_TIM_Base_Start_IT(&htim6);
   /* USER CODE END TIM6_Init 2 */
 
 }
@@ -453,15 +450,16 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, FLASH_Pin|DISP_RED_Pin|IRLASER_Pin|DISP_GRN_Pin
                           |DISP_BLU_Pin, GPIO_PIN_RESET);
 
-  HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET);
+  HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET); 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GRN_Pin|BLU_Pin|RED_Pin|DISP_LED5_Pin
                           |DISP_LED4_Pin|DISP_LED3_Pin|DISP_LED2_Pin|DISP_LED1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin
-                          |RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin
-                          |DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin 
+                          |RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin 
+                          |DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin, GPIO_PIN_RESET); 
+ 
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(DISP_LED10_GPIO_Port, DISP_LED10_Pin, GPIO_PIN_RESET);
@@ -507,13 +505,13 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : LD4_Pin DISP_LED13_Pin DISP_LED12_Pin DISP_LED11_Pin
                            GREEN_LASER_Pin RF_PWR_CT_Pin KEEPON_Pin BATT_MSR_EN_Pin
                            DISP_LED9_Pin DISP_LED8_Pin DISP_LED7_Pin DISP_LED6_Pin */
-  GPIO_InitStruct.Pin = LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin
-                          |RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin
-                          |DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+  GPIO_InitStruct.Pin = LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin 
+                          |RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin 
+                          |DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin; 
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; 
+  GPIO_InitStruct.Pull = GPIO_NOPULL; 
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW; 
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct); 
 
   /*Configure GPIO pin : LOW_BATT_Pin */
   GPIO_InitStruct.Pin = LOW_BATT_Pin;
@@ -528,12 +526,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DISP_LED10_GPIO_Port, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = GREEN_LASER_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
+  GPIO_InitStruct.Pin = GREEN_LASER_Pin; 
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; 
+  GPIO_InitStruct.Pull = GPIO_NOPULL; 
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW; 
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct); 
+ 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
@@ -547,53 +545,40 @@ static void MX_GPIO_Init(void)
 
 /***************************************************************************************************************************************/
 //			BEGINNING OF										FROM T10_x1-TIMER_EX3_COPYkl1 FOR TIMER6 CONFIG 1/6/24				   //
-void tim6_init(void)
-{
-	htim6.Instance = TIM6;
-	htim6.Init.Prescaler = 24;
-	//htim6.Init.Period = (2560-1);//2560 = 4mS
-	//htim6.Init.Period = (8960-1);//8960 = 14mS
-	//htim6.Init.Period = (15360-1);//15360 = 24mS
-	htim6.Init.Period = (28160-1);//28160 = 44mS
-	if(HAL_TIM_Base_Init(&htim6) != HAL_OK)
-	{
-		Error_Handler();
-	}
 
-}
 //			END       OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CONFIG  						   //
 /***************************************************************************************************************************************/
 //			BEGINNING OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CALLBACK 1/6/24				   //
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	pulse_p = 0;
-	if(counter++> pulse_p)
-	{
-		HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET);
-		HAL_TIM_Base_Stop_IT(&htim6);
-		pulse_p = 0;
-		counter = 0;
-	}
-}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) 
+{ 
+  pulse_p = 0; 
+  if(counter++> pulse_p) 
+  { 
+    HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET); 
+    HAL_TIM_Base_Stop_IT(&htim6); 
+    pulse_p = 0; 
+    counter = 0; 
+  } 
+} 
 //			END       OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CALLBACK						   //
 /***************************************************************************************************************************************/
 
-void FIRE_LASER(uint32_t pulse_length)
-{
-	//1. turn on laser
-	HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET);
-
-	//2. start timer
-	htim6.Instance = TIM6;
-	htim6.Init.Prescaler = 24;
-	htim6.Init.Period = (pulse_length-1);
-	if(HAL_TIM_Base_Init(&htim6) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	HAL_TIM_Base_Start_IT(&htim6);
-
-}
+void FIRE_LASER(uint32_t pulse_length) 
+{ 
+  //1. turn on laser 
+  HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET); 
+ 
+  //2. start timer 
+  htim6.Instance = TIM6; 
+  htim6.Init.Prescaler = 24; 
+  htim6.Init.Period = (pulse_length-1); 
+  if(HAL_TIM_Base_Init(&htim6) != HAL_OK) 
+  { 
+    Error_Handler(); 
+  } 
+  HAL_TIM_Base_Start_IT(&htim6); 
+ 
+} 
 
 
 void tim2_init(void)
@@ -642,11 +627,10 @@ void tim5_init(void)
 	}
 }
 
-
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
-
-	/*if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+	/*
+	if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
 	{
 		ccr_content = HAL_TIM_ReadCapturedValue(&htim2, TIM_CHANNEL_1);
 		__HAL_TIM_SET_COMPARE(htim, TIM_CHANNEL_1,ccr_content+pulse1_value);
