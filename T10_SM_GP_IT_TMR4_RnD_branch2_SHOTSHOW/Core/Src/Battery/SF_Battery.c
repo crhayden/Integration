@@ -56,8 +56,8 @@ bat_state_t 	batteryState = GOOD;
 static void _setLED() {
 	switch (batteryState){
 	case GOOD:
-		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
-		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
+		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET);
+		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, SET);
 		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);	
 		break;
 	case LOW:
@@ -80,8 +80,19 @@ static void _setLED() {
 /// @return void
 ///
 static void BatteryTask(void const * argument) {
+    GPIO_PinState isCharging = GPIO_PIN_SET;
     for (;;) {
-    	HAL_ADC_Start_IT(&hadc1);
+    	//
+    	// if we are charging set the LED green, otherwise monitor battery as usual.
+    	//
+		if (!HAL_GPIO_ReadPin(GRN_CHARGE_GPIO_Port, GRN_CHARGE_Pin)) {
+			HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
+			HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
+			HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
+		} else {
+			_setLED();
+    		HAL_ADC_Start_IT(&hadc1);
+		}
         osDelay(500);
     }
 }

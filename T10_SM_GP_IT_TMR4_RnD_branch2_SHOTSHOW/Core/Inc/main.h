@@ -82,8 +82,8 @@ void Error_Handler(void);
 #define SWD_GPIO_Port GPIOE
 #define PWR_MON_Pin GPIO_PIN_4
 #define PWR_MON_GPIO_Port GPIOE
-#define MODE_Pin GPIO_PIN_5
-#define MODE_GPIO_Port GPIOE
+#define GRN_CHARGE_Pin GPIO_PIN_5
+#define GRN_CHARGE_GPIO_Port GPIOE
 #define SW5_Pin GPIO_PIN_6
 #define SW5_GPIO_Port GPIOE
 #define TRIGGER_Pin GPIO_PIN_0

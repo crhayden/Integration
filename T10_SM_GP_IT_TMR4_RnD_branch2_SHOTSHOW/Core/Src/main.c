@@ -465,13 +465,19 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(DISP_LED10_GPIO_Port, DISP_LED10_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : SWC_Pin SWD_Pin PWR_MON_Pin MODE_Pin
-                           SW5_Pin SW6_Pin SWA_Pin SWB_Pin */
-  GPIO_InitStruct.Pin = SWC_Pin|SWD_Pin|PWR_MON_Pin|MODE_Pin
-                          |SW5_Pin|SW6_Pin|SWA_Pin|SWB_Pin;
+  /*Configure GPIO pins : SWC_Pin SWD_Pin PWR_MON_Pin SW5_Pin
+                           SW6_Pin SWA_Pin SWB_Pin */
+  GPIO_InitStruct.Pin = SWC_Pin|SWD_Pin|PWR_MON_Pin|SW5_Pin
+                          |SW6_Pin|SWA_Pin|SWB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : GRN_CHARGE_Pin */
+  GPIO_InitStruct.Pin = GRN_CHARGE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GRN_CHARGE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : TRIGGER_Pin */
   GPIO_InitStruct.Pin = TRIGGER_Pin;

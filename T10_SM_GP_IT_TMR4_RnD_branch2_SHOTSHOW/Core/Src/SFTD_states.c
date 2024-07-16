@@ -8,6 +8,7 @@
 #include "states.h"
 #include "main.h"
 #include "system.h"
+#include "SF_Audio.h"
 
 /* Private defines -----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim5;
@@ -40,7 +41,7 @@ volatile uint16_t next_mode = 9;
 short int TRIGGER = 0;
 short int TRIG_HELD = 0;
 volatile uint16_t roundsShot = 0;
-volatile uint16_t numRounds = 9;
+volatile uint16_t numRounds = 10;
 volatile uint16_t quarterBright = (1725);
 volatile uint16_t halfBright = (3500);
 volatile uint16_t fullBright = (6999);
@@ -432,13 +433,13 @@ void state_TRIG_PULL(int event, int parameter)
             break;
 
         case evTIMER_TICK:
-			if((roundsShot <= numRounds) && !TRIG_HELD)
+			if((curClip.dartsFired <= numRounds) && !TRIG_HELD)
 			{//come here if loaded, and need to fire sound & laser
-				roundsShot++;
-				updateDisp(roundsShot,LED_OFF);
+				//roundsShot++;
+				updateDisp(curClip.dartsFired,LED_OFF);
 				state[SFTD_STATE].next_state = SHOT_SOUND;
 			}
-			else if((roundsShot > numRounds) && !TRIG_HELD)
+			else if((curClip.dartsFired > numRounds) && !TRIG_HELD)
 			{//comes here when magazine is empty, plays the empty click sound the routes back to the calling state.
 				state[SFTD_STATE].next_state = TSR_EMPTY;
 			}
@@ -495,7 +496,7 @@ void state_MOD_LASER(int event, int parameter)
             break;
 
         case evTIMER_TICK:
-        	if(roundsShot >
+        	if(curClip.dartsFired >
 
         	numRounds)
         	{

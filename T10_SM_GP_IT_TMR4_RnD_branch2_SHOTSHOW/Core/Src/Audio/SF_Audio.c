@@ -32,25 +32,12 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// Types of audio clips
-///
-typedef enum {
-    NONE,
-    WARNING,
-    POWER_ON,
-    SHOT,
-    TONE,
-} audio_clips_t;
-///
-/// Clip info
+/// Trigger info
 ///
 typedef struct {
-    audio_clips_t   clip;		// clip type
-    uint8_t         totalSlots;	// 1 slot = MAX_DMA_VAL
-    uint8_t			curSlot;	// currrent chunk of audio clip to be played
-    uint8_t			count;		// how many times the current clip has played
-    uint8_t			dartsFired; // how many times the current clip has played
-} clip_info_t;
+    uint8_t         val;		// 1 = release, 0 = pulled
+    bool			didRelease;	// release after trigger pull
+} trig_data_t;
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Data
@@ -65,7 +52,11 @@ osMessageQId	audioQueueHandle;
 ///
 /// Holds information about the current clip that is playing
 ///
-clip_info_t curClip = {.clip = NONE, .totalSlots = 0, .curSlot = 0, .count = 0, .dartsFired = 0};
+clip_info_t curClip		= {.clip 	= NONE, .totalSlots = 0, .curSlot = 0, .count = 0, .dartsFired = 0, .totalDarts = 10};
+///
+/// Holds information about the trigger data
+///
+trig_data_t trigData 	= {.val		= 1, 	.didRelease = true};
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Functions
@@ -115,15 +106,21 @@ static void _SelectAudioClip(audio_clips_t clip) {
     }
 }
 ///
-/// @brief  Read pins from GPI pins
+/// @brief  Read trigger pin
 ///
-/// @return uint32_t - pin value
+/// @return uint8_t - pin value
 ///
-static uint32_t _ReadPins() {
-	uint32_t  res =   0;
-	res       =   HAL_GPIO_ReadPin(GPIOE, SW5_Pin)  <<  2;
-	res       |=  HAL_GPIO_ReadPin(GPIOE, SW6_Pin)  <<  1;
-	res       |=  HAL_GPIO_ReadPin(GPIOA, TRIGGER_Pin);
+static uint8_t _readTrigger() {
+	uint8_t res	=  HAL_GPIO_ReadPin(GPIOA, TRIGGER_Pin);
+	return	res;
+}
+///
+/// @brief  Read warning pin
+///
+/// @return uint8_t - pin value
+///
+static uint8_t _readWarning() {
+	uint8_t res	=  HAL_GPIO_ReadPin(GPIOE, SW5_Pin);
 	return	res;
 }
 ///
@@ -156,40 +153,29 @@ static void AudioTask(void const * argument) {
 /// @return void
 ///
 static void ButtonTask(void const * argument) {
-	uint32_t	curPinVal	=  0;
-	uint32_t 	oldPinVal   =  -1;
+	uint8_t 	warnPinVal   =  1;
 	for (;;) {
-	curPinVal	=	_ReadPins();
-	//
-	// take action on button release only with exception of SW5 (warning clip)
-	//
-	if (curPinVal != oldPinVal || curPinVal == 5) {
-		oldPinVal	=	curPinVal;
+		trigData.val	=	_readTrigger();
+		if (trigData.val) {
+			trigData.didRelease = true;
+		}
+		warnPinVal	=	_readWarning();
 		//
 		// Only attempt to play clip if there isn't one already playing
 		//
 		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
-			switch (curPinVal) {
-					case 5:
-						if (curClip.dartsFired >= 2) {
-							osMessagePut (audioQueueHandle, TONE, 100);
-						} else {
-							osMessagePut (audioQueueHandle, WARNING, 100);
-						}
-						break;
-					case 0:
-						osMessagePut (audioQueueHandle, SHOT, 100);
-						curClip.dartsFired++;
-						break;
-	 				// case 6:
-	 				// 	osMessagePut (audioQueueHandle, TONE, 100);
-	 				// 	break;
-					default:
-						break;
+			if (curClip.dartsFired < curClip.totalDarts){
+				if (!trigData.val && trigData.didRelease) {
+					curClip.dartsFired++; 
+					trigData.didRelease = false;
+					osMessagePut (audioQueueHandle, SHOT, 100); 
+				}
+			} 
+			if (warnPinVal) {
+				osMessagePut (audioQueueHandle, WARNING, 100); 
 			}
 		}
-	}
-	osDelay(50);
+		osDelay(50);
 	}
 }
 //------------------------------------------------------------------------------
@@ -251,7 +237,7 @@ void SF_AudioInit() {
 	//
 	// Create the audio task
 	//
-	osThreadDef(audioTask, AudioTask, osPriorityIdle, 0, 128);
+	osThreadDef(audioTask, AudioTask, osPriorityNormal, 0, 128);
 	audioTaskHandle = osThreadCreate(osThread(audioTask), NULL);
 	//
 	// Create the button task
