@@ -35,8 +35,8 @@
 /// Trigger info
 ///
 typedef struct {
-    uint8_t         val;		// 1 = release, 0 = pulled
-    bool			didRelease;	// release after trigger pull
+    uint8_t         pinVal;		
+    bool			didRelease;	
 } trig_data_t;
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -53,10 +53,6 @@ osMessageQId	audioQueueHandle;
 /// Holds information about the current clip that is playing
 ///
 clip_info_t curClip		= {.clip 	= NONE, .totalSlots = 0, .curSlot = 0, .count = 0, .dartsFired = 0, .totalDarts = 10};
-///
-/// Holds information about the trigger data
-///
-trig_data_t trigData 	= {.val		= 1, 	.didRelease = true};
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Functions
@@ -124,6 +120,15 @@ static uint8_t _readWarning() {
 	return	res;
 }
 ///
+/// @brief  Read stealth pin (push down)
+///
+/// @return uint8_t - pin value
+///
+static uint8_t _readStealth() {
+	uint8_t res	=  HAL_GPIO_ReadPin(SW4_GPIO_Port, SW4_Pin);
+	return	res;
+}
+///
 /// @brief  Function implementing the audio task.
 ///
 /// @param  argument: Hardcoded to 0.
@@ -133,7 +138,10 @@ static uint8_t _readWarning() {
 static void AudioTask(void const * argument) {
     osEvent 		event;
     audio_clips_t 	clip = 0;
-    _SelectAudioClip(POWER_ON);
+	uint8_t pinVal = _readStealth();
+	if (!pinVal) {
+	    _SelectAudioClip(POWER_ON);
+	}
     for (;;) {
         event = osMessageGet(audioQueueHandle, osWaitForever);
         if (event.status == osEventMessage) {
@@ -153,28 +161,30 @@ static void AudioTask(void const * argument) {
 /// @return void
 ///
 static void ButtonTask(void const * argument) {
-	uint8_t 	warnPinVal   =  1;
+	uint8_t 	warnPinVal   	=  	0;
+	///
+	/// Holds information about the trigger data
+	///
+	trig_data_t		trigData	= 	{.pinVal		= 1, 	.didRelease = true};
 	for (;;) {
-		trigData.val	=	_readTrigger();
-		if (trigData.val) {
-			trigData.didRelease = true;
-		}
-		warnPinVal	=	_readWarning();
-		//
-		// Only attempt to play clip if there isn't one already playing
-		//
-		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
-			if (curClip.dartsFired < curClip.totalDarts){
-				if (!trigData.val && trigData.didRelease) {
-					curClip.dartsFired++; 
-					trigData.didRelease = false;
-					osMessagePut (audioQueueHandle, SHOT, 100); 
-				}
-			} 
-			if (warnPinVal) {
-				osMessagePut (audioQueueHandle, WARNING, 100); 
+
+			trigData.pinVal	=	_readTrigger();
+			if (trigData.pinVal) {
+				trigData.didRelease = true;
 			}
-		}
+			warnPinVal	=	_readWarning();
+			if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) { 
+				if (curClip.dartsFired < curClip.totalDarts){
+					if (!trigData.pinVal && trigData.didRelease) {
+						curClip.dartsFired++; 
+						trigData.didRelease = false;
+						osMessagePut (audioQueueHandle, SHOT, 100); 
+					}
+				} 
+				if (warnPinVal) {
+					osMessagePut (audioQueueHandle, WARNING, 100); 
+				}
+			}
 		osDelay(50);
 	}
 }

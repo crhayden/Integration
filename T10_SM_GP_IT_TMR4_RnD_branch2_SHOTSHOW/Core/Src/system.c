@@ -55,11 +55,11 @@ void initGPIOStates(void)
 
 short unsigned getMode(void)
 {
-	int SW5, SW6, MODE_STATE;
+	int SW5, SW4, MODE_STATE;
 	SW5 = HAL_GPIO_ReadPin(SW5_GPIO_Port, SW5_Pin);
-	SW6 = HAL_GPIO_ReadPin(SW6_GPIO_Port, SW6_Pin);
+	SW4 = HAL_GPIO_ReadPin(SW4_GPIO_Port, SW4_Pin);
 
-	MODE_STATE = (SW5*2)+(SW6*1); 
+	MODE_STATE = (SW5*2)+(SW4*1);
 	return MODE_STATE;
 
 }
@@ -82,6 +82,8 @@ void updateMode(long int mode)
 		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET); 
 		HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, RESET); 
 		HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET); 
+		HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, SET);
+
 		//__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7000); 
 	} 
 	if(mode == 2) 

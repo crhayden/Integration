@@ -101,8 +101,8 @@ void Error_Handler(void);
 #define DISP_BLU_GPIO_Port GPIOA
 #define FINGER_Pin GPIO_PIN_0
 #define FINGER_GPIO_Port GPIOB
-#define SW6_Pin GPIO_PIN_7
-#define SW6_GPIO_Port GPIOE
+#define SW4_Pin GPIO_PIN_7
+#define SW4_GPIO_Port GPIOE
 #define GREEN_LASER_Pin GPIO_PIN_9
 #define GREEN_LASER_GPIO_Port GPIOE
 #define GRN_Pin GPIO_PIN_12

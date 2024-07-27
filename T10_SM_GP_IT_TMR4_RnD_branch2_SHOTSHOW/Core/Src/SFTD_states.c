@@ -54,6 +54,9 @@ volatile short int SM_Flag = 0;
 short int charging = 0;
 short int KEEPON_STATE = 0;
 short int CHRG_PLUGIN = 0;
+#define 	KEEPON_TIMER_EXPIRATION_VAL	3000/10
+uint32_t stealthCounter;
+bool startStealth = false;
 #define STEALTH_ENTER_COUNT 3
 typedef struct {
 	uint8_t buttonRelCnt;
@@ -118,6 +121,9 @@ void sftdStateInit(void)
 	//GET MODE_STATE
 	mode = getMode();
 	updateMode(mode);//update laser, flash, LED states.
+	if (mode == 1) {
+		startStealth = true;
+	}
 
 	//Get pulse setting
 	laserPulse = laser_pulse[getSwitch()];
@@ -350,7 +356,7 @@ void state_SHOT_ONLY(int event, int parameter)
         	SM_Counter++;
         	next_mode = getMode();
         	KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
-        	//stealthInfo.pinVal = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
+        	stealthInfo.pinVal = HAL_GPIO_ReadPin(SW4_GPIO_Port, SW4_Pin);
         	if (stealthInfo.pinVal) {
         		stealthInfo.isPressed = true;
         	} 
@@ -366,10 +372,10 @@ void state_SHOT_ONLY(int event, int parameter)
         	else if(mode != next_mode)
         	{//DEAL WITH USER CHANGING MODES HERE...
         		//state[SFTD_STATE].next_state = TRIG_PULL;
-        		mode = getMode();//retrieve rotary switch position, and assign to mode.
-        		next_mode = mode;
-        		updateMode(mode);//update laser, flash, LED states.
-        		laserPulse = laser_pulse[getSwitch()];
+				mode = getMode();//retrieve rotary switch position, and assign to mode.
+				next_mode = mode;
+				updateMode(mode);//update laser, flash, LED states.
+				laserPulse = laser_pulse[getSwitch()];
         	}
         	//else if((SM_Counter > flashRate)&&!SM_Flag)
         	else if((SM_Counter > flashRate)&&(!SM_Flag)&&(mode == WARN_REENG))
@@ -390,10 +396,21 @@ void state_SHOT_ONLY(int event, int parameter)
 			}
 
 			State_Counter++;
+			if (startStealth) {
+				stealthCounter++;
+			}
 			if(!KEEPON_STATE&&(State_Counter > powerOffTimer))
 			//if(!KEEPON_STATE)
 			{
-				state[SFTD_STATE].next_state = PWR_OFF;
+				if (startStealth) {
+					if (stealthCounter > KEEPON_TIMER_EXPIRATION_VAL) {
+						state[SFTD_STATE].next_state = PWR_OFF;
+						HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
+					}
+				} else {
+					state[SFTD_STATE].next_state = PWR_OFF;
+					HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
+				}
 
 			}
 			else if(stealthInfo.buttonRelCnt == STEALTH_ENTER_COUNT &&KEEPON_STATE)

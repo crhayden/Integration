@@ -30,7 +30,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -61,7 +60,6 @@ uint32_t pulse1_value = 21000;//500Hz
 uint32_t ccr_content;
 uint32_t pulse_p = 10; 
 uint32_t counter = 0; 
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -466,9 +464,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(DISP_LED10_GPIO_Port, DISP_LED10_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : SWC_Pin SWD_Pin PWR_MON_Pin SW5_Pin
-                           SW6_Pin SWA_Pin SWB_Pin */
+                           SW4_Pin SWA_Pin SWB_Pin */
   GPIO_InitStruct.Pin = SWC_Pin|SWD_Pin|PWR_MON_Pin|SW5_Pin
-                          |SW6_Pin|SWA_Pin|SWB_Pin;
+                          |SW4_Pin|SWA_Pin|SWB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
@@ -665,6 +663,7 @@ void StateMonitorTask(void const * argument)
   /* USER CODE BEGIN 5 */
     /* Infinite loop */
     for(;;) {
+
         if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
         	 sftdStateMonitor();
         }
