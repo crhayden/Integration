@@ -72,7 +72,7 @@ void updateMode(long int mode)
 		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET); 
 		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET); 
 		HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, SET); 
-		HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, RESET); 
+		HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, SET);
 		//__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7000); 
 	} 
 	if(mode == 1) 

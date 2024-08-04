@@ -16,11 +16,14 @@
 ///                           Internal Macros
 ///
 ////////////////////////////////////////////////////////////////////////////////
-#define NUM_BAT_SAMPLES 10
-#define HYSTERESIS		0.01f
-#define GOOD_THRESHOLD	3.6f
-#define LOW_THRESHOLD 	3.26f
-#define DEAD_THRESHOLD	2.75f
+#define NUM_BAT_SAMPLES 		10
+#define HYSTERESIS				0.01f
+#define GOOD_THRESHOLD			3.6f
+#define LOW_THRESHOLD 			3.26f
+#define DEAD_THRESHOLD			2.75f
+#define BATTERY_TASK_SLEEP_TIME	500   
+#define KEEPON_PWR_DURATION		3000/BATTERY_TASK_SLEEP_TIME
+#define IRLASER_ON_INTERVAL_CNT	9000/BATTERY_TASK_SLEEP_TIME   // hold trigger & down on selector for 9 seconds to turn on IRLaser
 ////////////////////////////////////////////////////////////////////////////////
 ////
 ///
@@ -81,11 +84,17 @@ static void _setLED() {
 ///
 static void BatteryTask(void const * argument) {
     GPIO_PinState isCharging = GPIO_PIN_SET;
+	uint8_t 	selectorDownPinVal 		=	0;
+	uint8_t 	selectorDownCount  		=	0;
+	uint8_t 	trigPinVal 				=	0;
+	uint8_t 	trigDownCount  			=	0;
+	uint8_t 	timeInMancturingMode	= 	0;	
     for (;;) {
     	//
     	// if we are charging set the LED green, otherwise monitor battery as usual.
     	//
-    	if (systemState != CHARGE) {
+		uint8_t warningPinVal	=  HAL_GPIO_ReadPin(GPIOE, SW5_Pin);
+    	if (systemState != CHARGE && !warningPinVal) {
 			if (!HAL_GPIO_ReadPin(GRN_CHARGE_GPIO_Port, GRN_CHARGE_Pin)) {
 				HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
 				HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
@@ -95,7 +104,35 @@ static void BatteryTask(void const * argument) {
 	    		HAL_ADC_Start_IT(&hadc1);
 			}
 		}
-        osDelay(500);
+		trigPinVal			=HAL_GPIO_ReadPin(GPIOA, TRIGGER_Pin);
+	 	if (!trigPinVal) {
+	 		trigDownCount++;
+	 	} else {
+	 		trigDownCount = 0;
+	 	}
+	 	selectorDownPinVal 	= HAL_GPIO_ReadPin(SW4_GPIO_Port, SW4_Pin);
+	 	if (selectorDownPinVal) {
+	 		selectorDownCount++;
+	 	} else {
+	 		selectorDownCount = 0;
+	 	}
+		if (trigDownCount >= IRLASER_ON_INTERVAL_CNT && selectorDownCount >= IRLASER_ON_INTERVAL_CNT) {	
+			batteryState = LOW;
+			_setLED();
+			HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, SET);
+  			HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET); 
+  			manufacturingMode	= true;
+  			trigDownCount 		= 0;
+  			selectorDownCount 	= 0;
+		}
+		if (manufacturingMode) {
+			timeInMancturingMode++;
+			if (timeInMancturingMode >= KEEPON_PWR_DURATION) {
+				HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
+				timeInMancturingMode = 0;
+			}
+		}
+        osDelay(BATTERY_TASK_SLEEP_TIME);
     }
 }
 //------------------------------------------------------------------------------
@@ -178,4 +215,5 @@ void SF_BatteryInit() {
 ///                              Global Data
 ///
 ////////////////////////////////////////////////////////////////////////////////
+bool 		manufacturingMode		=	false;
 

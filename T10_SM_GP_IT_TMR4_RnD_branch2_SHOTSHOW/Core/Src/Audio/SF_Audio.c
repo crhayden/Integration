@@ -161,30 +161,31 @@ static void AudioTask(void const * argument) {
 /// @return void
 ///
 static void ButtonTask(void const * argument) {
-	uint8_t 	warnPinVal   	=  	0;
+	uint8_t 	warnPinVal			=  	0;
+
 	///
 	/// Holds information about the trigger data
 	///
-	trig_data_t		trigData	= 	{.pinVal		= 1, 	.didRelease = true};
+	trig_data_t		trigData	= 	{.pinVal	= 1,	.didRelease = true};
 	for (;;) {
 
-			trigData.pinVal	=	_readTrigger();
-			if (trigData.pinVal) {
-				trigData.didRelease = true;
-			}
-			warnPinVal	=	_readWarning();
-			if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) { 
-				if (curClip.dartsFired < curClip.totalDarts){
-					if (!trigData.pinVal && trigData.didRelease) {
-						curClip.dartsFired++; 
-						trigData.didRelease = false;
-						osMessagePut (audioQueueHandle, SHOT, 100); 
-					}
-				} 
-				if (warnPinVal) {
-					osMessagePut (audioQueueHandle, WARNING, 100); 
+		trigData.pinVal	=	_readTrigger();
+		if (trigData.pinVal) {
+			trigData.didRelease = true;
+		}
+		warnPinVal	=	_readWarning();
+		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) { 
+			if (curClip.dartsFired < curClip.totalDarts){
+				if (!trigData.pinVal && trigData.didRelease) {
+					curClip.dartsFired++; 
+					trigData.didRelease = false;
+					osMessagePut (audioQueueHandle, SHOT, 100); 
 				}
+			} 
+			if (warnPinVal) {
+				osMessagePut (audioQueueHandle, WARNING, 100); 
 			}
+		}
 		osDelay(50);
 	}
 }

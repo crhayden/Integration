@@ -9,6 +9,7 @@
 #include "main.h"
 #include "system.h"
 #include "SF_Audio.h"
+#include "SF_Battery.h"
 
 /* Private defines -----------------------------------------------------------*/
 extern TIM_HandleTypeDef htim5;
@@ -32,9 +33,9 @@ enum
 //VARIABLES
 static int TEST_RATE_MS = 10;//ADJUST FOR BLINK RATE/DURATION ADJUSTMENT
 uint16_t laserPulse = 0;
-//volatile uint16_t laser_pulse[10] = {0,2560,8960,15360,28160,0,0,0,0,0};//MILO Pulses
-volatile uint32_t laser_pulse[10] = {0,25344,36032,46656,57344,57344,57344,57344,57344,57344};//VIRTRA Pulses
-//volatile uint32_t laser_pulse[10] = {0,5120,28160,47552,47552,47552,47552,47552,47552,47552};//TI Pulses
+//volatile uint16_t laser_pulses[10] = {0,2560,8960,15360,28160,0,0,0,0,0};//MILO Pulses
+volatile uint32_t laser_pulses[10] = {0, 25344,36032,46656,57344,57344,57344,57344,57344,57344};//VIRTRA Pulses
+//volatile uint32_t laser_pulses[10] = {0,5120,28160,47552,47552,47552,47552,47552,47552,47552};//TI Pulses
 //volatile uint16_t mode_state[NUM_MODES] = {STEALTH,OFF,ARM_RDY,WARN_REENG,NUM_MODES};
 volatile uint16_t mode = 9;
 volatile uint16_t next_mode = 9;
@@ -126,7 +127,7 @@ void sftdStateInit(void)
 	}
 
 	//Get pulse setting
-	laserPulse = laser_pulse[getSwitch()];
+	laserPulse = laser_pulses[getSwitch()];
 	//Initialize state machine timer
 	timerInit(SFTD_STATE_TIMER, TEST_RATE_MS);
 	//check for charging, and power button off..go into CHARGE State if charging
@@ -196,7 +197,7 @@ void state_PWR_OFF(int event, int parameter)
 						//MOVE BACK TO OPERATION...
 					  	mode = getMode();//retrieve rotary switch position, and assign to mode.
 						updateMode(mode);//update laser, flash, LED states.
-						laserPulse = laser_pulse[getSwitch()];
+						laserPulse = laser_pulses[getSwitch()];
 						state[SFTD_STATE].next_state = SHOT_ONLY;
 
 					}
@@ -225,7 +226,7 @@ void state_PWR_OFF(int event, int parameter)
 						//MOVE BACK TO OPERATION...
 						mode = getMode();//retrieve rotary switch position, and assign to mode.
 						updateMode(mode);//update laser, flash, LED states.
-						laserPulse = laser_pulse[getSwitch()];
+						laserPulse = laser_pulses[getSwitch()];
 						state[SFTD_STATE].next_state = SHOT_ONLY;
 
 					}
@@ -366,7 +367,7 @@ void state_SHOT_ONLY(int event, int parameter)
         	}
 			if(TRIGGER)
         	{
-				while(!HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin));
+				//while(!HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin));
         		state[SFTD_STATE].next_state = TRIG_PULL;
         	}
         	else if(mode != next_mode)
@@ -375,7 +376,7 @@ void state_SHOT_ONLY(int event, int parameter)
 				mode = getMode();//retrieve rotary switch position, and assign to mode.
 				next_mode = mode;
 				updateMode(mode);//update laser, flash, LED states.
-				laserPulse = laser_pulse[getSwitch()];
+				laserPulse = laser_pulses[getSwitch()];
         	}
         	//else if((SM_Counter > flashRate)&&!SM_Flag)
         	else if((SM_Counter > flashRate)&&(!SM_Flag)&&(mode == WARN_REENG))
@@ -403,13 +404,13 @@ void state_SHOT_ONLY(int event, int parameter)
 			//if(!KEEPON_STATE)
 			{
 				if (startStealth) {
-					if (stealthCounter > KEEPON_TIMER_EXPIRATION_VAL) {
+					if (stealthCounter > KEEPON_TIMER_EXPIRATION_VAL && !manufacturingMode) {
 						state[SFTD_STATE].next_state = PWR_OFF;
 						HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
 					}
 				} else {
-					state[SFTD_STATE].next_state = PWR_OFF;
-					HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
+					// state[SFTD_STATE].next_state = PWR_OFF;
+					// HAL_GPIO_WritePin(KEEPON_GPIO_Port, KEEPON_Pin, RESET);
 				}
 
 			}
@@ -506,7 +507,9 @@ void state_MOD_LASER(int event, int parameter)
         case evENTER_STATE:
         	systemState = MOD_LASER;
         	//
-        	FIRE_LASER(laserPulse);
+        	if(!manufacturingMode) {
+        		FIRE_LASER(laserPulse);
+    		}
 			/*pulse_lsr1();
 			myTimer = 0;
 			while_not = 1; */
@@ -729,7 +732,7 @@ void state_CHARGE(int event, int parameter)
 			{
 				//mode = getMode();//retrieve rotary switch position, and assign to mode.
 				//updateMode(mode);//update laser, flash, LED states.
-				//laserPulse = laser_pulse[getSwitch()];
+				//laserPulse = laser_pulses[getSwitch()];
 				//state[SFTD_STATE].next_state = SHOT_ONLY;
 			}
 			else if(!KEEPON_STATE)
