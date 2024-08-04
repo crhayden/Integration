@@ -33,9 +33,13 @@ enum
 //VARIABLES
 static int TEST_RATE_MS = 10;//ADJUST FOR BLINK RATE/DURATION ADJUSTMENT
 uint16_t laserPulse = 0;
-//volatile uint16_t laser_pulses[10] = {0,2560,8960,15360,28160,0,0,0,0,0};//MILO Pulses
-volatile uint32_t laser_pulses[10] = {0, 25344,36032,46656,57344,57344,57344,57344,57344,57344};//VIRTRA Pulses
-//volatile uint32_t laser_pulses[10] = {0,5120,28160,47552,47552,47552,47552,47552,47552,47552};//TI Pulses
+#if MILO_ENABLED
+volatile uint16_t laser_pulses[10] = {0, 1306,4571,7837,14367,0,0,0,0,0};//MILO Pulses
+#elif VIRTRA_ENABLED
+volatile uint32_t laser_pulses[10] = {0, 12931,18384,23804,29257,34710,40131,45584,51037,56457};//VIRTRA Pulses
+#elif TI_ENABLE
+volatile uint32_t laser_pulses[10] = {0, 2612,14367,24261,35265,47020,58776,0,0,0};//TI Pulses
+#endif
 //volatile uint16_t mode_state[NUM_MODES] = {STEALTH,OFF,ARM_RDY,WARN_REENG,NUM_MODES};
 volatile uint16_t mode = 9;
 volatile uint16_t next_mode = 9;

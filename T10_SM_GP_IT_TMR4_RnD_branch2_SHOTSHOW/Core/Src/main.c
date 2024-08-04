@@ -445,8 +445,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, FLASH_Pin|DISP_RED_Pin|IRLASER_Pin|DISP_GRN_Pin
-                          |DISP_BLU_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, FLASH_Pin|DISP_RED_Pin|DISP_GRN_Pin|DISP_BLU_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, GPIO_PIN_RESET);
@@ -557,32 +559,27 @@ static void MX_GPIO_Init(void)
 //			BEGINNING OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CALLBACK 1/6/24				   //
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) 
 { 
-  pulse_p = 0; 
-  if(counter++> pulse_p) 
-  { 
-    HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET); 
+    HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET);
     HAL_TIM_Base_Stop_IT(&htim6); 
-    pulse_p = 0; 
-    counter = 0; 
-  } 
 } 
 //			END       OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CALLBACK						   //
 /***************************************************************************************************************************************/
 
 void FIRE_LASER(uint32_t pulse_length) 
 { 
-  //1. turn on laser 
-  HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET); 
- 
-  //2. start timer 
-  htim6.Instance = TIM6; 
-  htim6.Init.Prescaler = 24; 
-  htim6.Init.Period = (pulse_length-1); 
-  if(HAL_TIM_Base_Init(&htim6) != HAL_OK) 
-  { 
-    Error_Handler(); 
-  } 
-  HAL_TIM_Base_Start_IT(&htim6); 
+    //
+    // Turn on the laser active low
+    //          
+    HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET);
+    //
+    // Load the new timer value
+    //
+    __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
+    __HAL_TIM_SET_AUTORELOAD(&htim6, pulse_length);
+    //
+    // Start the timer
+    //
+    HAL_TIM_Base_Start_IT(&htim6); 
  
 } 
 
