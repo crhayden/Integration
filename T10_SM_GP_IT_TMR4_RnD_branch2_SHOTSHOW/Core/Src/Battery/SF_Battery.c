@@ -17,10 +17,10 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 #define NUM_BAT_SAMPLES 		10
-#define HYSTERESIS				0.01f
-#define GOOD_THRESHOLD			3.6f
-#define LOW_THRESHOLD 			3.26f
-#define DEAD_THRESHOLD			2.75f
+#define HYSTERESIS				0.3f
+#define GOOD_THRESHOLD			3.2f
+#define LOW_THRESHOLD 			2.9f
+#define DEAD_THRESHOLD			2.5f
 #define BATTERY_TASK_SLEEP_TIME	500   
 #define KEEPON_PWR_DURATION		3000/BATTERY_TASK_SLEEP_TIME
 #define IRLASER_ON_INTERVAL_CNT	9000/BATTERY_TASK_SLEEP_TIME   // hold trigger & down on selector for 9 seconds to turn on IRLaser

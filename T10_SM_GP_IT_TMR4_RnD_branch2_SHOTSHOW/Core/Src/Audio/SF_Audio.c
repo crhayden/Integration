@@ -147,7 +147,7 @@ static void AudioTask(void const * argument) {
         if (event.status == osEventMessage) {
             event.def.message_id    = audioQueueHandle;
             clip                    = (audio_clips_t)event.value.v;
-        	osDelay(30);
+        	osDelay(35);
             _SelectAudioClip(clip);
         }
         osDelay(100);
