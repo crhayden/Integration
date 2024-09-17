@@ -51,7 +51,13 @@ DMA_HandleTypeDef hdma_spi3_tx;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim6;
 
-osThreadId stateMonitorTasHandle;
+/* Definitions for stateMonitorTas */
+osThreadId_t stateMonitorTasHandle;
+const osThreadAttr_t stateMonitorTas_attributes = {
+  .name = "stateMonitorTas",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE BEGIN PV */
 TIM_HandleTypeDef htim6;															//NEW CODE ADDED...1/6/24 FROM T10_x1-TIMER_EX3_COPY1
 TIM_HandleTypeDef htim2;
@@ -70,7 +76,7 @@ static void MX_TIM2_Init(void);
 static void MX_I2S3_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM6_Init(void);
-void StateMonitorTask(void const * argument);
+void StateMonitorTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 void tim5_init(void); 
@@ -134,6 +140,9 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -150,13 +159,16 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of stateMonitorTas */
-  osThreadDef(stateMonitorTas, StateMonitorTask, osPriorityNormal, 0, 128);
-  stateMonitorTasHandle = osThreadCreate(osThread(stateMonitorTas), NULL);
+  /* creation of stateMonitorTas */
+  stateMonitorTasHandle = osThreadNew(StateMonitorTask, NULL, &stateMonitorTas_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
@@ -655,7 +667,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 * @retval None
 */
 /* USER CODE END Header_StateMonitorTask */
-void StateMonitorTask(void const * argument)
+void StateMonitorTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
     /* Infinite loop */

@@ -43,11 +43,23 @@ typedef struct {
 ///                           Internal Data
 ///
 ////////////////////////////////////////////////////////////////////////////////
+
+const osThreadAttr_t audioTask_attributes = {
+  .name = "audioMonitorTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+
+const osThreadAttr_t buttonTask_attributes = {
+  .name = "buttonMonitorTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 ///
 /// task and queue handles
 ///
-osThreadId 		buttonTaskHandle;
-osThreadId 		audioTaskHandle;
+osThreadId_t 		buttonTaskHandle;
+osThreadId_t 		audioTaskHandle;
 osMessageQId	audioQueueHandle;
 ///
 /// Holds information about the current clip that is playing
@@ -135,21 +147,20 @@ static uint8_t _readStealth() {
 ///
 /// @return void
 ///
-static void AudioTask(void const * argument) {
-    osEvent 		event;
+static void AudioTask(void * argument) {
+    osEvent 		evt;
     audio_clips_t 	clip = 0;
 	uint8_t pinVal = _readStealth();
 	if (!pinVal) {
 	    _SelectAudioClip(POWER_ON);
 	}
     for (;;) {
-        event = osMessageGet(audioQueueHandle, osWaitForever);
-        if (event.status == osEventMessage) {
-            event.def.message_id    = audioQueueHandle;
-            clip                    = (audio_clips_t)event.value.v;
-        	osDelay(35);
-            _SelectAudioClip(clip);
-        }
+		if (osMessageQueueGet(audioQueueHandle, &evt, 0, osWaitForever) ==  osOK){
+			evt.def.message_id    = audioQueueHandle;
+			clip                    = (audio_clips_t)evt.value.v;
+			osDelay(35);
+			_SelectAudioClip(clip);
+		}
         osDelay(100);
     }
 }
@@ -160,8 +171,9 @@ static void AudioTask(void const * argument) {
 ///
 /// @return void
 ///
-static void ButtonTask(void const * argument) {
+static void ButtonTask(void * argument) {
 	uint8_t 	warnPinVal			=  	0;
+	audio_clips_t 	qMsg			=  	0;
 
 	///
 	/// Holds information about the trigger data
@@ -179,11 +191,13 @@ static void ButtonTask(void const * argument) {
 				if (!trigData.pinVal && trigData.didRelease) {
 					curClip.dartsFired++; 
 					trigData.didRelease = false;
-					osMessagePut (audioQueueHandle, SHOT, 100); 
+					qMsg = SHOT;
+					osMessageQueuePut (audioQueueHandle, &qMsg, 0, 100);
 				}
 			} 
 			if (warnPinVal) {
-				osMessagePut (audioQueueHandle, WARNING, 100); 
+				qMsg = WARNING;
+				osMessageQueuePut (audioQueueHandle, &qMsg, 0, 100);
 			}
 		}
 		osDelay(50);
@@ -196,6 +210,7 @@ static void ButtonTask(void const * argument) {
 //------------------------------------------------------------------------------
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
+	audio_clips_t 	qMsg			=  	0;
 	if (curClip.clip == TONE) {
 		//
 		// if we've reached the end, reset
@@ -223,7 +238,8 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
 		// If this is the 2nd consecutive tigger pull - start the tone.
 		//
 		if (++curClip.count >=2) {
-			osMessagePut (audioQueueHandle, TONE, 0);
+			qMsg = TONE;
+			osMessageQueuePut (audioQueueHandle, &qMsg, 0, 0);
 			curClip.count = 0;
 		}
 	} else {
@@ -243,18 +259,15 @@ void SF_AudioInit() {
 	//
 	// Create the audio queue
 	//
-	osMessageQDef(audioQueue, 16, uint16_t);
-	audioQueueHandle = osMessageCreate(osMessageQ(audioQueue), NULL);
+	audioQueueHandle = osMessageQueueNew(16, sizeof(uint32_t), NULL);
 	//
 	// Create the audio task
 	//
-	osThreadDef(audioTask, AudioTask, osPriorityNormal, 0, 128);
-	audioTaskHandle = osThreadCreate(osThread(audioTask), NULL);
+	audioTaskHandle = osThreadNew(AudioTask, NULL, &audioTask_attributes);
 	//
 	// Create the button task
 	//
-	osThreadDef(buttonTask, ButtonTask, osPriorityNormal, 0, 128);
-	buttonTaskHandle = osThreadCreate(osThread(buttonTask), NULL);
+	buttonTaskHandle = osThreadNew(ButtonTask, NULL, &buttonTask_attributes);
 
 }
 ////////////////////////////////////////////////////////////////////////////////

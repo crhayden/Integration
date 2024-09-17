@@ -44,8 +44,13 @@ typedef enum {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// task and  handles
+/// task attributes and handles
 ///
+const osThreadAttr_t batteryTask_attributes = {
+  .name = "batteryMonitorTas",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 osThreadId 		batteryTaskHandle;
 ///
 /// current battery state
@@ -82,8 +87,7 @@ static void _setLED() {
 ///
 /// @return void
 ///
-static void BatteryTask(void const * argument) {
-    GPIO_PinState isCharging = GPIO_PIN_SET;
+static void BatteryTask(void * argument) {
 	uint8_t 	selectorDownPinVal 		=	0;
 	uint8_t 	selectorDownCount  		=	0;
 	uint8_t 	trigPinVal 				=	0;
@@ -206,9 +210,7 @@ void SF_BatteryInit() {
 	//
 	// Create the battery task
 	//
-	osThreadDef(batteryTask, BatteryTask, osPriorityIdle, 0, 128);
-	batteryTaskHandle = osThreadCreate(osThread(batteryTask), NULL);
-
+	batteryTaskHandle = osThreadNew(BatteryTask, NULL, &batteryTask_attributes);
 }
 ////////////////////////////////////////////////////////////////////////////////
 ///
