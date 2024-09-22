@@ -60,7 +60,9 @@ const osThreadAttr_t buttonTask_attributes = {
 ///
 osThreadId_t 		buttonTaskHandle;
 osThreadId_t 		audioTaskHandle;
-osMessageQId	audioQueueHandle;
+osMessageQueueId_t	audioQueueHandle;
+
+/////////
 ///
 /// Holds information about the current clip that is playing
 ///
@@ -148,16 +150,17 @@ static uint8_t _readStealth() {
 /// @return void
 ///
 static void AudioTask(void * argument) {
-    osEvent 		evt;
+    //osEvent 		evt;
+	audio_clips_t 	qMsg			=  	0;
     audio_clips_t 	clip = 0;
 	uint8_t pinVal = _readStealth();
 	if (!pinVal) {
 	    _SelectAudioClip(POWER_ON);
 	}
     for (;;) {
-		if (osMessageQueueGet(audioQueueHandle, &evt, 0, osWaitForever) ==  osOK){
-			evt.def.message_id    = audioQueueHandle;
-			clip                    = (audio_clips_t)evt.value.v;
+		if (osMessageQueueGet(audioQueueHandle, &qMsg, 0, osWaitForever) ==  osOK){
+			//evt.def.message_id    = audioQueueHandle;
+			clip                    = qMsg;
 			osDelay(35);
 			_SelectAudioClip(clip);
 		}
@@ -251,6 +254,9 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
 ///                           External Functions
 ///
 ////////////////////////////////////////////////////////////////////////////////
+const osMessageQueueAttr_t audioQueue_attributes = { 
+  .name = "audioQueue"
+}; 
 void SF_AudioInit() {
 	//
 	// Register for the DMA complete callback
@@ -259,7 +265,7 @@ void SF_AudioInit() {
 	//
 	// Create the audio queue
 	//
-	audioQueueHandle = osMessageQueueNew(16, sizeof(uint32_t), NULL);
+	audioQueueHandle = osMessageQueueNew(16, sizeof(uint32_t), &audioQueue_attributes);
 	//
 	// Create the audio task
 	//

@@ -89,7 +89,6 @@ static void _setLED() {
 ///
 static void BatteryTask(void * argument) {
 	uint8_t 	selectorDownPinVal 		=	0;
-	uint8_t 	selectorDownCount  		=	0;
 	uint8_t 	trigPinVal 				=	0;
 	uint8_t 	trigDownCount  			=	0;
 	uint8_t 	timeInMancturingMode	= 	0;	
@@ -218,4 +217,5 @@ void SF_BatteryInit() {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 bool 		manufacturingMode		=	false;
+uint8_t 	selectorDownCount  		=	0;
 

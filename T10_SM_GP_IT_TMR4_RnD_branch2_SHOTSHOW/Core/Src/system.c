@@ -50,7 +50,7 @@ void initGPIOStates(void)
 	HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);
 	HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET);
 	HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, SET);
-	//HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, SET);
+	HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, SET);
 }
 
 short unsigned getMode(void)
@@ -71,8 +71,10 @@ void updateMode(long int mode)
 		HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, SET); 
 		HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, RESET); 
 		HAL_GPIO_WritePin(RED_GPIO_Port, RED_Pin, RESET); 
-		HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, SET); 
-		HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, SET);
+		if (!startStealth || state[SFTD_STATE].next_state == CHARGE) {
+			HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, SET);
+			HAL_GPIO_WritePin(FLASH_GPIO_Port, FLASH_Pin, SET);
+		}
 		//__HAL_TIM_SET_COMPARE(&htim5,TIM_CHANNEL_2,7000); 
 	} 
 	if(mode == 1) 
@@ -193,7 +195,7 @@ void initDisp(void)
     // Shuffle the array
     _Shuffle(&randNums[0]);
 
-	for (int i = 1; i<=10; i ++) {
+	for (int i = 0; i<=12; i ++) {
 		LED_STATE[i] = 0;
 	}
 	LED_STATE[B13] = 0;

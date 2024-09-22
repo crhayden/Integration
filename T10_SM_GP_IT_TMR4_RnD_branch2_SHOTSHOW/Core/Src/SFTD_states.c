@@ -59,7 +59,7 @@ volatile short int SM_Flag = 0;
 short int charging = 0;
 short int KEEPON_STATE = 0;
 short int CHRG_PLUGIN = 0;
-#define 	KEEPON_TIMER_EXPIRATION_VAL	3000/10
+#define 	KEEPON_TIMER_EXPIRATION_VAL	6000/10
 uint32_t stealthCounter;
 bool startStealth = false;
 #define STEALTH_ENTER_COUNT 3
@@ -125,11 +125,10 @@ void sftdStateInit(void)
 
 	//GET MODE_STATE
 	mode = getMode();
-	updateMode(mode);//update laser, flash, LED states.
 	if (mode == 1) {
 		startStealth = true;
 	}
-
+	updateMode(mode);//update laser, flash, LED states.
 	//Get pulse setting
 	laserPulse = laser_pulses[getSwitch()];
 	//Initialize state machine timer
@@ -727,7 +726,8 @@ void state_CHARGE(int event, int parameter)
         	//charging = HAL_GPIO_ReadPin(GRN_GPIO_Port, GRN_Pin);
 			KEEPON_STATE = HAL_GPIO_ReadPin(PWR_MON_GPIO_Port, PWR_MON_Pin);
 			uint8_t trigPin = HAL_GPIO_ReadPin(TRIGGER_GPIO_Port, TRIGGER_Pin);
-			if (!trigPin) {
+			uint8_t warn	=  HAL_GPIO_ReadPin(GPIOE, SW5_Pin);
+			if (!trigPin || warn) {
 				mode = getMode();
 				updateMode(mode);
 				state[SFTD_STATE].next_state = SHOT_ONLY;

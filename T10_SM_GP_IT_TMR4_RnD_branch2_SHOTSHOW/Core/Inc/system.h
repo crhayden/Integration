@@ -8,6 +8,7 @@
 #ifndef INC_SYSTEM_H_
 #define INC_SYSTEM_H_
 
+#include "stdbool.h"
 
 //FUNCTION PROTOTYPES
 short unsigned getSwitch(void);
@@ -23,6 +24,7 @@ void initDisp(void);
 void recallDisp(void);
 short unsigned battTest(void);
 //void testSW1(void);
+extern bool startStealth;
 
 
 
