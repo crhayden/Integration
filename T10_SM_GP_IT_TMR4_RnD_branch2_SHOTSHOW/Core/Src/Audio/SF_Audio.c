@@ -109,7 +109,7 @@ static void _SelectAudioClip(audio_clips_t clip) {
 			break;
 		case TONE:
 			curClip.totalSlots = sizeTone/MAX_DMA_VAL;
-		    _StartDMA((uint16_t*)&Tone[0], sizeTone);
+		    //_StartDMA((uint16_t*)&Tone[0], sizeTone);
 		  	break;
     default:
       break;
@@ -241,8 +241,8 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
 		// If this is the 2nd consecutive tigger pull - start the tone.
 		//
 		if (++curClip.count >=2) {
-			qMsg = TONE;
-			osMessageQueuePut (audioQueueHandle, &qMsg, 0, 0);
+			//qMsg = TONE;
+			//osMessageQueuePut (audioQueueHandle, &qMsg, 0, 0);
 			curClip.count = 0;
 		}
 	} else {
