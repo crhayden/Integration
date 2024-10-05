@@ -105,6 +105,9 @@ static void _SelectAudioClip(audio_clips_t clip) {
 		  	_StartDMA((uint16_t*)&PwrOnConcise[0], sizePwrOnConcise);
 		  	break;
 		case SHOT:
+			if(!manufacturingMode) {
+        		FIRE_LASER(laserPulse);
+    		}
 			_StartDMA((uint16_t*)&Shot[0], sizeShot);
 			break;
 		case TONE:
@@ -153,6 +156,11 @@ static void AudioTask(void * argument) {
     //osEvent 		evt;
 	audio_clips_t 	qMsg			=  	0;
     audio_clips_t 	clip = 0;
+    //
+    // Hack for IRLaser 4mS issue hardware workaround. Remove this on next rev of hardware.
+    // Turn on the 5Volts to the IR Laser.
+    //
+    HAL_GPIO_WritePin(GPIOD, RF_PWR_CT_Pin, SET);
 	uint8_t pinVal = _readStealth();
 	if (!pinVal) {
 	    _SelectAudioClip(POWER_ON);
@@ -240,7 +248,7 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
 		//
 		// If this is the 2nd consecutive tigger pull - start the tone.
 		//
-		if (++curClip.count >=2) {
+		if (++curClip.count == 2) {
 			qMsg = TONE;
 			osMessageQueuePut (audioQueueHandle, &qMsg, 0, 0);
 			curClip.count = 0;

@@ -34,11 +34,11 @@ enum
 static int TEST_RATE_MS = 10;//ADJUST FOR BLINK RATE/DURATION ADJUSTMENT
 uint16_t laserPulse = 0;
 #if MILO_ENABLED
-volatile uint16_t laser_pulses[10] = {0, 1306,4571,7837,14367,0,0,0,0,0};//MILO Pulses
+volatile uint16_t laser_pulses[10] = {1306,4571,7837,14367,0,0,0,0,0,0};//MILO Pulses
 #elif VIRTRA_ENABLED
-volatile uint32_t laser_pulses[10] = {0, 12931,18384,23804,29257,34710,40131,45584,51037,56457};//VIRTRA Pulses
+volatile uint32_t laser_pulses[10] = {12931,18384,23804,29257,34710,40131,45584,51037,56457,0};//VIRTRA Pulses
 #elif TI_ENABLE
-volatile uint32_t laser_pulses[10] = {0, 2612,14367,24261,35265,47020,58776,0,0,0};//TI Pulses
+volatile uint32_t laser_pulses[10] = {2612,14367,24261,35265,47020,58776,0,0,0,0};//TI Pulses
 #endif
 //volatile uint16_t mode_state[NUM_MODES] = {STEALTH,OFF,ARM_RDY,WARN_REENG,NUM_MODES};
 volatile uint16_t mode = 9;
@@ -510,9 +510,9 @@ void state_MOD_LASER(int event, int parameter)
         case evENTER_STATE:
         	systemState = MOD_LASER;
         	//
-        	if(!manufacturingMode) {
-        		FIRE_LASER(laserPulse);
-    		}
+        	// if(!manufacturingMode) {
+        	// 	FIRE_LASER(laserPulse);
+    		// }
 			/*pulse_lsr1();
 			myTimer = 0;
 			while_not = 1; */

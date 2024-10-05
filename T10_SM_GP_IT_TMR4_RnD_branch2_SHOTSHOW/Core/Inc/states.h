@@ -6,7 +6,7 @@
 
 #ifndef _STATES_H
 #define _STATES_H
-
+#include "stdint.h"
 /* Private define ------------------------------------------------------------*/
 #define TICK_TIMER_MS    100
 
@@ -37,5 +37,6 @@ typedef enum
 } state_t;
 /* Public variables ----------------------------------------------------------*/
 extern tSTATE state[NUM_STATE_MACHINES];
+extern uint16_t laserPulse;
 
 #endif
