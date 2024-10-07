@@ -112,7 +112,9 @@ static void _SelectAudioClip(audio_clips_t clip) {
 			break;
 		case TONE:
 			curClip.totalSlots = sizeTone/MAX_DMA_VAL;
+#if SIMULATED_ENABLED
 		    _StartDMA((uint16_t*)&Tone[0], sizeTone);
+#endif //SIMULATED_ENABLED
 		  	break;
     default:
       break;
