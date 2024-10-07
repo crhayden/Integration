@@ -37,7 +37,7 @@ uint16_t laserPulse = 0;
 volatile uint16_t laser_pulses[10] = {1306,4571,7837,14367,0,0,0,0,0,0};//MILO Pulses
 #elif VIRTRA_ENABLED
 volatile uint32_t laser_pulses[10] = {12931,18384,23804,29257,34710,40131,45584,51037,56457,0};//VIRTRA Pulses
-#elif TI_ENABLE
+#elif TI_ENABLED
 volatile uint32_t laser_pulses[10] = {2612,14367,24261,35265,47020,58776,0,0,0,0};//TI Pulses
 #endif
 //volatile uint16_t mode_state[NUM_MODES] = {STEALTH,OFF,ARM_RDY,WARN_REENG,NUM_MODES};
