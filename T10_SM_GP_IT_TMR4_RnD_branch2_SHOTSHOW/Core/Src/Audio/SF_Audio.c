@@ -199,12 +199,19 @@ static void ButtonTask(void * argument) {
 			trigData.didRelease = true;
 		}
 		warnPinVal	=	_readWarning();
-		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) { 
+#if SIMULATED_ENABLED
+		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
+#endif //SIMULATED_ENABLED
 			if (curClip.dartsFired < curClip.totalDarts){
 				if (!trigData.pinVal && trigData.didRelease) {
 					curClip.dartsFired++; 
 					trigData.didRelease = false;
 					qMsg = SHOT;
+#if !SIMULATED_ENABLED
+					if (HAL_I2S_GetState(&hi2s3) != HAL_I2S_STATE_READY) {
+						HAL_I2S_DMAStop(&hi2s3);
+					}
+#endif //SIMULATED_ENABLED
 					osMessageQueuePut (audioQueueHandle, &qMsg, 0, 100);
 				}
 			} 
@@ -212,7 +219,9 @@ static void ButtonTask(void * argument) {
 				qMsg = WARNING;
 				osMessageQueuePut (audioQueueHandle, &qMsg, 0, 100);
 			}
+#if SIMULATED_ENABLED
 		}
+#endif //SIMULATED_ENABLED
 		osDelay(50);
 	}
 }

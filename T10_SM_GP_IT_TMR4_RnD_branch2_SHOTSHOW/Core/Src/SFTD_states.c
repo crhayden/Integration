@@ -454,14 +454,19 @@ void state_TRIG_PULL(int event, int parameter)
             break;
 
         case evTIMER_TICK:
-			if((curClip.dartsFired <= numRounds) && !TRIG_HELD)
+			if((curClip.dartsFired < numRounds) && !TRIG_HELD)
 			{//come here if loaded, and need to fire sound & laser
 				//roundsShot++;
 				updateDisp(curClip.dartsFired,LED_OFF);
 				state[SFTD_STATE].next_state = SHOT_SOUND;
 			}
-			else if((curClip.dartsFired > numRounds) && !TRIG_HELD)
+			else if((curClip.dartsFired == numRounds) )
 			{//comes here when magazine is empty, plays the empty click sound the routes back to the calling state.
+
+				updateDisp(curClip.dartsFired,LED_OFF);
+				HAL_GPIO_WritePin(DISP_LED11_GPIO_Port, DISP_LED11_Pin, 1);//blu
+				HAL_GPIO_WritePin(DISP_LED12_GPIO_Port, DISP_LED12_Pin, 0);//red
+				HAL_GPIO_WritePin(DISP_LED13_GPIO_Port, DISP_LED13_Pin, 1);//grn
 				state[SFTD_STATE].next_state = TSR_EMPTY;
 			}
 			else

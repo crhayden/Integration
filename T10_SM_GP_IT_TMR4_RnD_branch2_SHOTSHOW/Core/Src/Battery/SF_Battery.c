@@ -97,7 +97,7 @@ static void BatteryTask(void * argument) {
     	// if we are charging set the LED green, otherwise monitor battery as usual.
     	//
 		uint8_t warningPinVal	=  HAL_GPIO_ReadPin(GPIOE, SW5_Pin);
-    	if (systemState != CHARGE && !warningPinVal) {
+    	if (systemState != CHARGE && systemState != TSR_EMPTY && !warningPinVal) {
 			if (!HAL_GPIO_ReadPin(GRN_CHARGE_GPIO_Port, GRN_CHARGE_Pin)) {
 				HAL_GPIO_WritePin(GRN_GPIO_Port, GRN_Pin, SET);
 				HAL_GPIO_WritePin(BLU_GPIO_Port, BLU_Pin, RESET);

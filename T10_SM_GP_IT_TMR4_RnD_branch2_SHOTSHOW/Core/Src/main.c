@@ -673,9 +673,13 @@ void StateMonitorTask(void *argument)
     /* Infinite loop */
     for(;;) {
 
+#if SIMULATED_ENABLED
         if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
+#endif //SIMULATED_ENABLED
         	 sftdStateMonitor();
+#if SIMULATED_ENABLED
         }
+#endif //SIMULATED_ENABLED
         osDelay(10);
     }
   /* USER CODE END 5 */
