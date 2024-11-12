@@ -62,7 +62,7 @@ extern state_t systemState;
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-void FIRE_LASER(uint32_t pulse_length);
+void FIRE_LASER();
 
 /* USER CODE END EM */
 
@@ -73,10 +73,10 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 #define VIRTRA_ENABLED 		0
-#define MILO_ENABLED 		0
+#define MILO_ENABLED		0
 #define TI_ENABLED 			1
 
-#define SIMULATED_ENABLED 	1
+#define SIMULATED_ENABLED 	0
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

@@ -66,6 +66,15 @@ uint32_t pulse1_value = 21000;//500Hz
 uint32_t ccr_content;
 uint32_t pulse_p = 10; 
 uint32_t counter = 0; 
+
+uint16_t laserPulse = 0;
+#if MILO_ENABLED
+volatile uint16_t laser_pulses[10] = {0,1306,4571,7837,14367,0,0,0,0,0,0};//MILO Pulses
+#elif VIRTRA_ENABLED
+volatile uint32_t laser_pulses[10] = {0,12931,18384,23804,29257,34612,40163,45714,50939,56490};//VIRTRA Pulses
+#elif TI_ENABLED
+volatile uint16_t laser_pulses[10] = {0,2612,14367,24261,35265,47020,58776,0,0,0,0};//TI Pulses
+#endif
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -80,7 +89,7 @@ void StateMonitorTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 void tim5_init(void); 
-void FIRE_LASER(uint32_t pulse_length);
+void FIRE_LASER();
 
 /* USER CODE END PFP */
 
@@ -401,7 +410,7 @@ static void MX_TIM6_Init(void)
 
   /* USER CODE END TIM6_Init 1 */
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 24;
+  htim6.Init.Prescaler = 48;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim6.Init.Period = 65535;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -577,8 +586,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 //			END       OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CALLBACK						   //
 /***************************************************************************************************************************************/
 
-void FIRE_LASER(uint32_t pulse_length) 
+void FIRE_LASER()
 { 
+	laserPulse = laser_pulses[getSwitch()];
     //
     // Turn on the laser active low
     //          
@@ -587,7 +597,7 @@ void FIRE_LASER(uint32_t pulse_length)
     // Load the new timer value
     //
     __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
-    __HAL_TIM_SET_AUTORELOAD(&htim6, pulse_length);
+    __HAL_TIM_SET_AUTORELOAD(&htim6, laserPulse);
     //
     // Start the timer
     //

@@ -106,7 +106,7 @@ static void _SelectAudioClip(audio_clips_t clip) {
 		  	break;
 		case SHOT:
 			if(!manufacturingMode) {
-        		FIRE_LASER(laserPulse);
+        		FIRE_LASER();
     		}
 			_StartDMA((uint16_t*)&Shot[0], sizeShot);
 			break;

@@ -27,7 +27,6 @@
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim5;
-extern uint16_t laserPulse;
 extern short int TRIGGER;
 /* USER CODE END Includes */
 
