@@ -256,12 +256,25 @@ void ADC_IRQHandler(void)
 void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
+#if LASER_AMO
 
-  /* USER CODE END TIM6_DAC_IRQn 0 */
+	// The laser amo signal is faster than the HAL callback logic. The timer complete callback
+	//	must be called as soon as possible.
+	// The HAL supports ~34kHz max. The laser target requires 38khz.
+
+  uint32_t itsource = htim6.Instance->DIER;
+  uint32_t itflag   = htim6.Instance->SR;
+  if ((itflag & (TIM_FLAG_UPDATE)) == (TIM_FLAG_UPDATE))
+  {
+    if ((itsource & (TIM_IT_UPDATE)) == (TIM_IT_UPDATE))
+    {
+    	__HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
+    	HAL_TIM_PeriodElapsedCallback(&htim6);
+    	return;
+    }
+  }
+#endif
   HAL_TIM_IRQHandler(&htim6);
-  /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
-
-  /* USER CODE END TIM6_DAC_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

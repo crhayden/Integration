@@ -75,12 +75,12 @@ volatile uint32_t laser_pulses[10] = {0,12931,18384,23804,29257,34612,40163,4571
 #elif TI_ENABLED
 volatile uint16_t laser_pulses[10] = {0,2612,14367,24261,35265,47020,58776,0,0,0};//TI Pulses
 #elif LASER_AMO
-#define LAZER_TARGET_PRESCALER	24
-#define LAZER_TARGET_38KHZ_ARR	6
-#define LAZER_TARGET_38KHZ_TOGGLE_COUNT 152
-#define LAZER_TARGET_LOW_ARR 275
-#define LAZER_TARGET_HIGH_ARR 224
-#define LAZER_TARGET_LOW_HIGH_TOGGLE_COUNT 18
+#define LASER_TARGET_PRESCALER	6
+#define LASER_TARGET_38KHZ_ARR	29
+#define LASER_TARGET_38KHZ_TOGGLE_COUNT 76 // 152
+#define LASER_TARGET_LOW_ARR 982
+#define LASER_TARGET_HIGH_ARR 800
+#define LASER_TARGET_LOW_HIGH_TOGGLE_COUNT 18
 volatile  int irToggleCount = 0;
 #endif
 /* USER CODE END PV */
@@ -359,12 +359,13 @@ static void MX_TIM6_Init(void)
 #elif VIRTRA_ENABLED
 #elif TI_ENABLED
   htim6.Init.Prescaler = 48;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 #elif LASER_AMO
-  htim6.Init.Prescaler = 24;
+  htim6.Init.Prescaler = LASER_TARGET_PRESCALER;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 #endif
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim6.Init.Period = 65535;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
     Error_Handler();
@@ -539,20 +540,25 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 #elif LASER_AMO
 	irToggleCount++;
 
-    if( irToggleCount < LAZER_TARGET_38KHZ_TOGGLE_COUNT) {
+    if( irToggleCount < LASER_TARGET_38KHZ_TOGGLE_COUNT) {
     	// Laser is in 38kHz pulse period
-        HAL_GPIO_TogglePin(IRLASER_GPIO_Port, IRLASER_Pin);
-    } else if (irToggleCount < (LAZER_TARGET_38KHZ_TOGGLE_COUNT + LAZER_TARGET_LOW_HIGH_TOGGLE_COUNT)){
+    	HAL_GPIO_TogglePin(IRLASER_GPIO_Port, IRLASER_Pin);
+//    	if(irToggleCount % 2){
+//    		HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, GPIO_PIN_RESET);
+//    	} else {
+//    		HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, GPIO_PIN_SET);
+//    	}
+    } else if (irToggleCount < (LASER_TARGET_38KHZ_TOGGLE_COUNT + LASER_TARGET_LOW_HIGH_TOGGLE_COUNT)){
     	// laser is high/low period
-    	int high_low_count = irToggleCount - LAZER_TARGET_38KHZ_TOGGLE_COUNT;
+    	int high_low_count = irToggleCount - LASER_TARGET_38KHZ_TOGGLE_COUNT;
     	if(high_low_count % 2){
     		HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, GPIO_PIN_RESET);
-    		laserPulse = LAZER_TARGET_LOW_ARR;
+    		laserPulse = LASER_TARGET_HIGH_ARR;
     		__HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
     		__HAL_TIM_SET_AUTORELOAD(&htim6, laserPulse);
     	} else {
     		HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, GPIO_PIN_SET);
-    		laserPulse = LAZER_TARGET_HIGH_ARR;
+    		laserPulse = LASER_TARGET_LOW_ARR;
     		__HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
 			__HAL_TIM_SET_AUTORELOAD(&htim6, laserPulse);
     	}
@@ -575,14 +581,16 @@ void FIRE_LASER()
 #elif VIRTRA_ENABLED
 #elif TI_ENABLED
 	laserPulse = laser_pulses[getSwitch()];
-#elif LASER_AMO
-	irToggleCount = 0;
-	laserPulse = LAZER_TARGET_38KHZ_ARR;
-#endif
     //
     // Turn on the laser active low
-    //          
+    //
     HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET);
+#elif LASER_AMO
+	irToggleCount = 0;
+	laserPulse = LASER_TARGET_38KHZ_ARR;
+	// The laser amo timing is very fast. Change the IR pin in the timer callback only to keep timing consistent.
+#endif
+
     //
     // Load the new timer value
     //
