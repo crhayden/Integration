@@ -72,11 +72,20 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+
+// Target Manufacturer
 #define VIRTRA_ENABLED 		0
 #define MILO_ENABLED		0
 #define TI_ENABLED			0
 #define LASER_AMO			0
 #define SET_CAN_ENABLED		1
+
+// Shot Counter LEDs
+#define CONFIG_SHOT_COUNTER_LED_RANDOM        0
+#define CONFIG_SHOT_COUNTER_LED_RIGHT_TO_LEFT 1
+#if CONFIG_SHOT_COUNTER_LED_RANDOM && CONFIG_SHOT_COUNTER_LED_RIGHT_TO_LEFT
+#error "Choose only one option: CONFIG_SHOT_COUNTER_LED_RANDOM or CONFIG_SHOT_COUNTER_LED_RIGHT_TO_LEFT"
+#endif
 
 #define SIMULATED_ENABLED 	0
 /* USER CODE END EFP */
