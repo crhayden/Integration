@@ -256,7 +256,7 @@ void ADC_IRQHandler(void)
 void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
-#if LASER_AMO
+#if LASER_AMO || SET_CAN_ENABLED
 
 	// The laser amo signal is faster than the HAL callback logic. The timer complete callback
 	//	must be called as soon as possible.

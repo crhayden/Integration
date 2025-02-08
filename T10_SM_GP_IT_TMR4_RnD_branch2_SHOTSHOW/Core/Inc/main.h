@@ -75,7 +75,8 @@ void Error_Handler(void);
 #define VIRTRA_ENABLED 		0
 #define MILO_ENABLED		0
 #define TI_ENABLED			0
-#define LASER_AMO			1
+#define LASER_AMO			0
+#define SET_CAN_ENABLED		1
 
 #define SIMULATED_ENABLED 	0
 /* USER CODE END EFP */

@@ -82,6 +82,11 @@ volatile uint16_t laser_pulses[10] = {0,2612,14367,24261,35265,47020,58776,0,0,0
 #define LASER_TARGET_HIGH_ARR 800
 #define LASER_TARGET_LOW_HIGH_TOGGLE_COUNT 18
 volatile  int irToggleCount = 0;
+#elif SET_CAN_ENABLED
+volatile  int irToggleCount = 0;
+#define SET_CAN_PRESCALER	6
+#define SET_CAN_38KHZ_ARR	29
+#define SET_CAN_38KHZ_TOGGLE_COUNT 28*2+1 // 152
 #endif
 /* USER CODE END PV */
 
@@ -363,6 +368,9 @@ static void MX_TIM6_Init(void)
 #elif LASER_AMO
   htim6.Init.Prescaler = LASER_TARGET_PRESCALER;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+#elif SET_CAN_ENABLED
+  htim6.Init.Prescaler = SET_CAN_PRESCALER;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 #endif
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim6.Init.Period = 65535;
@@ -567,8 +575,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     	HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, GPIO_PIN_SET);
     	HAL_TIM_Base_Stop_IT(&htim6);
     }
-#endif
+#elif SET_CAN_ENABLED
+	irToggleCount++;
 
+    if( irToggleCount < SET_CAN_38KHZ_TOGGLE_COUNT) {
+    	// Laser is in 38kHz pulse period
+    	HAL_GPIO_TogglePin(IRLASER_GPIO_Port, IRLASER_Pin);
+    } else {
+    	// laser sequence is complete
+    	HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, RESET);
+    	HAL_TIM_Base_Stop_IT(&htim6);
+    }
+#endif
 
 } 
 //			END       OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CALLBACK						   //
@@ -588,6 +606,10 @@ void FIRE_LASER()
 #elif LASER_AMO
 	irToggleCount = 0;
 	laserPulse = LASER_TARGET_38KHZ_ARR;
+	// The laser amo timing is very fast. Change the IR pin in the timer callback only to keep timing consistent.
+#elif SET_CAN_ENABLED
+	irToggleCount = 0;
+	laserPulse = SET_CAN_38KHZ_ARR;
 	// The laser amo timing is very fast. Change the IR pin in the timer callback only to keep timing consistent.
 #endif
 
