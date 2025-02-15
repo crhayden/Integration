@@ -434,17 +434,15 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
+  /* All Shot Counter LEDs should be off initially so they can light up with effect */
   HAL_GPIO_WritePin(GPIOB, GRN_Pin|BLU_Pin|RED_Pin|DISP_LED5_Pin
-                          |DISP_LED4_Pin|DISP_LED3_Pin|DISP_LED2_Pin|DISP_LED1_Pin, GPIO_PIN_RESET);
+    |DISP_LED4_Pin|DISP_LED3_Pin|DISP_LED2_Pin|DISP_LED1_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOD, DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin|DISP_LED9_Pin|DISP_LED8_Pin|DISP_LED7_Pin
+                            |DISP_LED6_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(DISP_LED10_GPIO_Port, DISP_LED10_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LD4_Pin|DISP_LED13_Pin|DISP_LED12_Pin|DISP_LED11_Pin
-                          |RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin|DISP_LED9_Pin
-                          |DISP_LED8_Pin|DISP_LED7_Pin|DISP_LED6_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(DISP_LED10_GPIO_Port, DISP_LED10_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LD4_Pin|RF_PWR_CT_Pin|KEEPON_Pin|BATT_MSR_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : SWC_Pin SWD_Pin PWR_MON_Pin SW5_Pin
                            SW4_Pin SWA_Pin SWB_Pin */

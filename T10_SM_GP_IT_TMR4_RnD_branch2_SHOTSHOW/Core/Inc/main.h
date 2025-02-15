@@ -87,6 +87,8 @@ void Error_Handler(void);
 #error "Choose only one option: CONFIG_SHOT_COUNTER_LED_RANDOM or CONFIG_SHOT_COUNTER_LED_RIGHT_TO_LEFT"
 #endif
 
+#define CONFIG_SHOT_COUNTER_CHASE_SPEED_MS 40
+
 #define SIMULATED_ENABLED 	0
 /* USER CODE END EFP */
 
