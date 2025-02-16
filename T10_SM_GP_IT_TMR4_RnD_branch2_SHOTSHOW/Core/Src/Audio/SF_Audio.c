@@ -191,9 +191,11 @@ static void ButtonTask(void * argument) {
 	audio_clips_t 	qMsg			=  	0;
 
 	///
-	/// Holds information about the trigger data
+	/// Holds information about the trigger data.
+	/// #Note: Customer requested the weapon prevent a shot when first powered on. didRelease should be 
+	///		initialized to false to prevent a shot incase trigger is held during startup.
 	///
-	trig_data_t		trigData	= 	{.pinVal	= 1,	.didRelease = true};
+	trig_data_t		trigData	= 	{.pinVal	= 1,	.didRelease = false};
 	for (;;) {
 
 		trigData.pinVal	=	_readTrigger();
