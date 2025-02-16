@@ -185,7 +185,8 @@ static void AudioTask(void * argument) {
 /// @return void
 ///
 static void ButtonTask(void * argument) {
-	uint8_t 	warnPinVal			=  	0;
+	uint8_t 	warnPinVal			=  	GPIO_PIN_RESET; // Momentary switch on the power switch
+	uint8_t 	previousWarnPinVal	=  	GPIO_PIN_RESET; // Previous value of the momentary switch, used to prevent multiple triggers
 	audio_clips_t 	qMsg			=  	0;
 
 	///
@@ -215,10 +216,12 @@ static void ButtonTask(void * argument) {
 					osMessageQueuePut (audioQueueHandle, &qMsg, 0, 100);
 				}
 			} 
-			if (warnPinVal) {
+			// Check if warning button is pressed, but ignore multiple triggers
+			if ((warnPinVal == GPIO_PIN_SET) && (warnPinVal != previousWarnPinVal)) {
 				qMsg = WARNING;
 				osMessageQueuePut (audioQueueHandle, &qMsg, 0, 100);
 			}
+			previousWarnPinVal = warnPinVal;
 #if SIMULATED_ENABLED
 		}
 #endif //SIMULATED_ENABLED
