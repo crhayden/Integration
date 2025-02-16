@@ -288,7 +288,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   //HAL_GPIO_WritePin(IRLASER_GPIO_Port, IRLASER_Pin, SET);
   //FIRE_LASER(laserPulse);//44mS
 
-  TRIGGER = 1;
+  /* Feb 2025: Tigger monitor has been moved to the
+      Button Monitor Task within the audio file. It now uses a polling
+      method instead of an interrupt. */
+  // TRIGGER = 1;
 
 
 }

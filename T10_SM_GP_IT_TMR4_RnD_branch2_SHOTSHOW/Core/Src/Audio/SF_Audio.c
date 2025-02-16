@@ -43,6 +43,7 @@ typedef struct {
 ///                           Internal Data
 ///
 ////////////////////////////////////////////////////////////////////////////////
+extern short int TRIGGER; // Used to trigger a shot within the existing state manager.
 
 const osThreadAttr_t audioTask_attributes = {
   .name = "audioMonitorTask",
@@ -205,6 +206,7 @@ static void ButtonTask(void * argument) {
 #endif //SIMULATED_ENABLED
 			if (curClip.dartsFired < curClip.totalDarts){
 				if (!trigData.pinVal && trigData.didRelease) {
+					TRIGGER = 1; // Used to trigger a shot within the existing state manager.
 					curClip.dartsFired++; 
 					trigData.didRelease = false;
 					qMsg = SHOT;
