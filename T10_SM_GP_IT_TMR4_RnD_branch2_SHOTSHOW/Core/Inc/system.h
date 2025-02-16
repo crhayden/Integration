@@ -9,6 +9,7 @@
 #define INC_SYSTEM_H_
 
 #include "stdbool.h"
+#include "stm32f4xx_hal.h"
 
 //FUNCTION PROTOTYPES
 short unsigned getSwitch(void);
@@ -23,6 +24,7 @@ void turnOffDisp(void);
 void initDisp(void);
 void recallDisp(void);
 short unsigned battTest(void);
+void LED_Dimmer_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 //void testSW1(void);
 extern bool startStealth;
 

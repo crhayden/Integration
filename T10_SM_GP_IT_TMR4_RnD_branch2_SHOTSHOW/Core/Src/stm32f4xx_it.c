@@ -27,6 +27,7 @@
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim5;
+extern TIM_HandleTypeDef htim3;
 extern short int TRIGGER;
 /* USER CODE END Includes */
 
@@ -305,5 +306,8 @@ void TIM5_IRQHandler(void)
 	HAL_TIM_IRQHandler(&htim5);
 }
 
+void TIM3_IRQHandler(void){
+	HAL_TIM_IRQHandler(&htim3);
+}
 
 /* USER CODE END 1 */

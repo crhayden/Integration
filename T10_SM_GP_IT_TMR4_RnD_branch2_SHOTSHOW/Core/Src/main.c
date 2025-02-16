@@ -59,6 +59,7 @@ const osThreadAttr_t stateMonitorTas_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
+TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim6;															//NEW CODE ADDED...1/6/24 FROM T10_x1-TIMER_EX3_COPY1
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim5;
@@ -88,6 +89,9 @@ volatile  int irToggleCount = 0;
 #define SET_CAN_38KHZ_ARR	29
 #define SET_CAN_38KHZ_TOGGLE_COUNT 28*2+1 // 152
 #endif
+#define AUTO_POWER_OFF_TIMER_PRESCALER 	(65528) // This was chosen to have 1 minute period be a round number
+#define AUTO_POWER_OFF_TIMER_PERIOD		(14648) // 1 minute period at above prescaler
+#define AUTO_POWER_OFF_AFTER_MINUTES_VALUE (60) // Auto power off weapon after this many minutes
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,8 +100,12 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_I2S3_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM3_Init(void);
 static void MX_TIM6_Init(void);
 void StateMonitorTask(void *argument);
+
+void BatterySaver_AutoOff_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
+//void LED_Dimmer_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 /* USER CODE BEGIN PFP */
 void tim5_init(void); 
@@ -145,19 +153,23 @@ int main(void)
   MX_DMA_Init();
   MX_I2S3_Init();
   MX_ADC1_Init();
-  MX_TIM6_Init();
+  MX_TIM6_Init(); // Timer for the laser pulse width
+  MX_TIM3_Init(); // Timer for the auto-off timer to if weapon is left on
+
   /* USER CODE BEGIN 2 */
   SF_AudioInit();
   SF_BatteryInit();
   //MX_TIM5_Init();
   sftdStateInit();
 
-
   if((HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_2)!= HAL_OK))
   {
 	  Error_Handler();
   }
 
+  // __HAL_TIM_CLEAR_FLAG(&htim3, TIM_FLAG_UPDATE);
+  // __HAL_TIM_SET_AUTORELOAD(&htim3, 100);
+  // HAL_TIM_Base_Start_IT(&htim3);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -392,6 +404,41 @@ static void MX_TIM6_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 50; //AUTO_POWER_OFF_TIMER_PRESCALER;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 12; //AUTO_POWER_OFF_TIMER_PERIOD;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.RepetitionCounter = 0;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+//  HAL_TIM_RegisterCallback(&htim3, HAL_TIM_PERIOD_ELAPSED_CB_ID, BatterySaver_AutoOff_PeriodElapsedCallback);
+  HAL_TIM_RegisterCallback(&htim3, HAL_TIM_PERIOD_ELAPSED_CB_ID,LED_Dimmer_PeriodElapsedCallback);
+
+  HAL_TIM_Base_Start_IT(&htim3);
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -460,7 +507,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : TRIGGER_Pin */
   GPIO_InitStruct.Pin = TRIGGER_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  // Feb 2025 - M.C. Changed interrupt to occur when trigger is pulled instead of released
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(TRIGGER_GPIO_Port, &GPIO_InitStruct);
 
@@ -587,6 +635,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 #endif
 
 } 
+
+volatile uint8_t auto_off_timer_minutes_elapsed = 0;
+void BatterySaver_AutoOff_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+
+	// Prevent variable overflow by only incrementing if it's below the threshold
+	if(auto_off_timer_minutes_elapsed <= AUTO_POWER_OFF_AFTER_MINUTES_VALUE){
+		auto_off_timer_minutes_elapsed++;
+	}
+	HAL_GPIO_TogglePin(DISP_LED13_GPIO_Port, DISP_LED13_Pin);
+
+}
+
+//volatile uint32_t led_dimmer_count=0;
+//void LED_Dimmer_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+//
+//	if(led_dimmer_count>10) {
+//		led_dimmer_count=0;
+//		HAL_GPIO_WritePin(DISP_LED13_GPIO_Port, DISP_LED13_Pin, GPIO_PIN_RESET);
+//		HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, GPIO_PIN_SET);
+//	} else {
+//		led_dimmer_count++;
+//		HAL_GPIO_WritePin(DISP_LED13_GPIO_Port, DISP_LED13_Pin, GPIO_PIN_SET);
+//		HAL_GPIO_WritePin(GREEN_LASER_GPIO_Port, GREEN_LASER_Pin, GPIO_PIN_RESET);
+//	}
+//}
+
 //			END       OF										FROM T10_x1-TIMER_EX3_COPY1 FOR TIMER6 CALLBACK						   //
 /***************************************************************************************************************************************/
 
