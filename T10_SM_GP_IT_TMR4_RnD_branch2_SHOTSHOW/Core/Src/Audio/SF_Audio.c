@@ -38,6 +38,13 @@ typedef struct {
     uint8_t         pinVal;		
     bool			didRelease;	
 } trig_data_t;
+///
+/// Warning button info
+///
+typedef struct {
+    uint8_t         pinVal;		
+    bool			didRelease;	
+} warning_button_data_t;
 ////////////////////////////////////////////////////////////////////////////////
 ///
 ///                           Internal Data
@@ -186,23 +193,27 @@ static void AudioTask(void * argument) {
 /// @return void
 ///
 static void ButtonTask(void * argument) {
-	uint8_t 	warnPinVal			=  	GPIO_PIN_RESET; // Momentary switch on the power switch
-	uint8_t 	previousWarnPinVal	=  	GPIO_PIN_RESET; // Previous value of the momentary switch, used to prevent multiple triggers
 	audio_clips_t 	qMsg			=  	0;
-
 	///
 	/// Holds information about the trigger data.
 	/// #Note: Customer requested the weapon prevent a shot when first powered on. didRelease should be 
 	///		initialized to false to prevent a shot incase trigger is held during startup.
 	///
 	trig_data_t		trigData	= 	{.pinVal	= 1,	.didRelease = false};
+	///
+	/// Holds information about the warning button.
+	///
+	warning_button_data_t warnData = {.pinVal = GPIO_PIN_RESET, .didRelease = false};
 	for (;;) {
 
 		trigData.pinVal	=	_readTrigger();
 		if (trigData.pinVal) {
 			trigData.didRelease = true;
 		}
-		warnPinVal	=	_readWarning();
+		warnData.pinVal	=	_readWarning();
+		if (warnData.pinVal == GPIO_PIN_RESET) {
+			warnData.didRelease = true;
+		}
 #if SIMULATED_ENABLED
 		if (HAL_I2S_GetState(&hi2s3) == HAL_I2S_STATE_READY) {
 #endif //SIMULATED_ENABLED
@@ -221,11 +232,11 @@ static void ButtonTask(void * argument) {
 				}
 			} 
 			// Check if warning button is pressed, but ignore multiple triggers
-			if ((warnPinVal == GPIO_PIN_SET) && (warnPinVal != previousWarnPinVal)) {
+			if ((warnData.pinVal == GPIO_PIN_SET) && (warnData.didRelease)) {
+				warnData.didRelease = false;
 				qMsg = WARNING;
 				osMessageQueuePut (audioQueueHandle, &qMsg, 0, 100);
 			}
-			previousWarnPinVal = warnPinVal;
 #if SIMULATED_ENABLED
 		}
 #endif //SIMULATED_ENABLED
